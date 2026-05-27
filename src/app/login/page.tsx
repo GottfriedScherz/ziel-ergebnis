@@ -15,34 +15,41 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      )
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-      const data = await res.json()
+      console.log('Trying login with URL:', url)
+      console.log('Key starts with:', key?.substring(0, 20))
 
-      if (!res.ok || data.error) {
-        setError('E-Mail oder Passwort falsch.')
+      const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': key!,
+          'Authorization': `Bearer ${key}`,
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const text = await res.text()
+      console.log('Response status:', res.status)
+      console.log('Response body:', text)
+
+      if (!res.ok) {
+        const data = JSON.parse(text)
+        setError(data.error_description || data.message || 'Login fehlgeschlagen.')
         setLoading(false)
         return
       }
 
-      // Store session
+      const data = JSON.parse(text)
       localStorage.setItem('sb_access_token', data.access_token)
       localStorage.setItem('sb_refresh_token', data.refresh_token)
       localStorage.setItem('sb_user', JSON.stringify(data.user))
-
       router.push('/dashboard')
-    } catch (err) {
-      setError('Verbindungsfehler. Bitte versuche es erneut.')
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError('Verbindungsfehler: ' + err.message)
       setLoading(false)
     }
   }
