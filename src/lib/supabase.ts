@@ -6,35 +6,39 @@ export function getAuthHeaders() {
   return {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${token || SUPABASE_KEY}`,
+    'Authorization': token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`,
+    'Prefer': 'return=representation',
   }
 }
 
 export async function dbQuery(table: string, params: string = '') {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params ? '?' + params : ''}`, {
-    headers: getAuthHeaders()
-  })
-  if (!res.ok) return null
+  const headers = getAuthHeaders()
+  console.log('dbQuery headers Authorization starts with:', headers['Authorization'].substring(0,30))
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params ? '?' + params : ''}`, { headers })
+  if (!res.ok) {
+    console.error(`dbQuery ${table} failed:`, res.status, await res.text())
+    return null
+  }
   return res.json()
 }
 
 export async function dbInsert(table: string, body: any) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
-    headers: { ...getAuthHeaders(), 'Prefer': 'return=representation' },
+    headers: getAuthHeaders(),
     body: JSON.stringify(body)
   })
-  if (!res.ok) return null
+  if (!res.ok) { console.error(`dbInsert ${table} failed:`, res.status); return null }
   return res.json()
 }
 
 export async function dbUpdate(table: string, params: string, body: any) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
     method: 'PATCH',
-    headers: { ...getAuthHeaders(), 'Prefer': 'return=representation' },
+    headers: getAuthHeaders(),
     body: JSON.stringify(body)
   })
-  if (!res.ok) return null
+  if (!res.ok) { console.error(`dbUpdate ${table} failed:`, res.status); return null }
   return res.json()
 }
 
