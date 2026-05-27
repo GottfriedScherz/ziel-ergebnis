@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Service Key nicht konfiguriert.' }, { status: 500 })
   }
 
-  // 1. Create auth user
   const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: 'POST',
     headers: {
@@ -22,30 +21,29 @@ export async function POST(req: NextRequest) {
       'apikey': SERVICE_KEY,
       'Authorization': `Bearer ${SERVICE_KEY}`,
     },
-    body: JSON.stringify({
-      email,
-      password,
-      email_confirm: true,
-    })
+    body: JSON.stringify({ email, password, email_confirm: true })
   })
 
-  const authText = await authRes.text()
-  console.log('Auth response status:', authRes.status)
-  console.log('Auth response body:', authText)
+  const authData = await authRes.json()
 
   if (!authRes.ok) {
+    // Map common Supabase error codes to German messages
+    const msg = authData.msg || authData.message || authData.error_description || ''
     let errMsg = 'Fehler beim Anlegen des Nutzers.'
-    try {
-      const authData = JSON.parse(authText)
-      errMsg = authData.msg || authData.message || authData.error_description || errMsg
-    } catch(e) {}
+    if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered') || authData.code === 'email_exists') {
+      errMsg = 'Diese E-Mail-Adresse ist bereits registriert.'
+    } else if (msg.toLowerCase().includes('password') || msg.toLowerCase().includes('weak')) {
+      errMsg = 'Passwort zu schwach. Bitte mindestens 8 Zeichen, Groß- und Kleinbuchstaben sowie eine Zahl verwenden.'
+    } else if (msg.toLowerCase().includes('invalid') && msg.toLowerCase().includes('email')) {
+      errMsg = 'Ungültige E-Mail-Adresse.'
+    } else if (msg) {
+      errMsg = msg
+    }
     return NextResponse.json({ error: errMsg }, { status: 400 })
   }
 
-  const authData = JSON.parse(authText)
   const userId = authData.id
 
-  // 2. Create profile
   const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
     method: 'POST',
     headers: {
@@ -55,9 +53,7 @@ export async function POST(req: NextRequest) {
       'Prefer': 'return=representation',
     },
     body: JSON.stringify({
-      id: userId,
-      name,
-      email,
+      id: userId, name, email,
       karrierestufe: parseInt(karrierestufe),
       is_admin: false,
       betreuer_id: betreuer_id || null,
@@ -66,8 +62,7 @@ export async function POST(req: NextRequest) {
 
   if (!profileRes.ok) {
     const profileErr = await profileRes.json()
-    console.log('Profile error:', profileErr)
-    return NextResponse.json({ error: profileErr.message || 'Profil konnte nicht erstellt werden.' }, { status: 400 })
+    return NextResponse.json({ error: 'Nutzer angelegt, aber Profil fehlgeschlagen: ' + (profileErr.message || '') }, { status: 400 })
   }
 
   return NextResponse.json({ success: true, userId })
