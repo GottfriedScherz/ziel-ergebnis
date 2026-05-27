@@ -10,6 +10,10 @@ export async function POST(req: NextRequest) {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY!
 
+  if (!SERVICE_KEY) {
+    return NextResponse.json({ error: 'Service Key nicht konfiguriert.' }, { status: 500 })
+  }
+
   // 1. Create auth user
   const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: 'POST',
@@ -25,12 +29,20 @@ export async function POST(req: NextRequest) {
     })
   })
 
-  const authData = await authRes.json()
+  const authText = await authRes.text()
+  console.log('Auth response status:', authRes.status)
+  console.log('Auth response body:', authText)
 
   if (!authRes.ok) {
-    return NextResponse.json({ error: authData.message || 'Fehler beim Anlegen des Nutzers.' }, { status: 400 })
+    let errMsg = 'Fehler beim Anlegen des Nutzers.'
+    try {
+      const authData = JSON.parse(authText)
+      errMsg = authData.msg || authData.message || authData.error_description || errMsg
+    } catch(e) {}
+    return NextResponse.json({ error: errMsg }, { status: 400 })
   }
 
+  const authData = JSON.parse(authText)
   const userId = authData.id
 
   // 2. Create profile
@@ -54,6 +66,7 @@ export async function POST(req: NextRequest) {
 
   if (!profileRes.ok) {
     const profileErr = await profileRes.json()
+    console.log('Profile error:', profileErr)
     return NextResponse.json({ error: profileErr.message || 'Profil konnte nicht erstellt werden.' }, { status: 400 })
   }
 
