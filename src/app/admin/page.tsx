@@ -15,6 +15,12 @@ export default function Admin() {
   const [newZeile, setNewZeile] = useState('')
   const [newStufeMin, setNewStufeMin] = useState(1)
   const [msg, setMsg] = useState('')
+  const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [newStufe, setNewStufe] = useState(1)
+  const [newBetreuer, setNewBetreuer] = useState('')
+  const [creating, setCreating] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -48,6 +54,28 @@ export default function Admin() {
     setTimeout(() => setMsg(''), 2000)
   }
 
+  async function createUser() {
+    if (!newName || !newEmail || !newPw) { setMsg('Bitte alle Pflichtfelder ausfüllen.'); return }
+    setCreating(true)
+    setMsg('')
+    const res = await fetch('/api/create-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName, email: newEmail, password: newPw, karrierestufe: newStufe, betreuer_id: newBetreuer || null })
+    })
+    const data = await res.json()
+    if (data.error) {
+      setMsg('Fehler: ' + data.error)
+    } else {
+      setMsg('✓ Partner erfolgreich angelegt!')
+      setNewName(''); setNewEmail(''); setNewPw(''); setNewStufe(1); setNewBetreuer('')
+      // Refresh users list
+      dbQuery('profiles', 'select=*&order=name').then(u => setUsers(u || []))
+    }
+    setCreating(false)
+    setTimeout(() => setMsg(''), 4000)
+  }
+
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
 
   return (
@@ -66,7 +94,6 @@ export default function Admin() {
             </button>
           ))}
         </div>
-        {msg && <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 mb-4 text-sm text-blue-700">{msg}</div>}
         {tab === 'users' && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <table className="w-full">
@@ -148,11 +175,49 @@ export default function Admin() {
         )}
         {tab === 'neuer' && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
-              <strong>Schritt 1:</strong> Geh in Supabase → Authentication → Users → „Add user" und lege den Nutzer mit E-Mail + Passwort an.<br/>
-              <strong>Schritt 2:</strong> Führe diesen SQL-Code aus (E-Mail anpassen):<br/>
-              <code className="block mt-2 bg-yellow-100 p-2 rounded text-xs">INSERT INTO profiles (id, name, email, karrierestufe, is_admin) SELECT id, 'Name', 'email@beispiel.at', 1, false FROM auth.users WHERE email = 'email@beispiel.at';</code><br/>
-              <strong>Schritt 3:</strong> Weise hier unter „Nutzer" Stufe und Betreuer zu.
+            <h3 className="font-semibold text-gray-700 mb-4">Neuen Partner anlegen</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</label>
+                  <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Vor- und Nachname"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">E-Mail</label>
+                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@beispiel.at"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Passwort</label>
+                  <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Initiales Passwort"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Planungsvariante</label>
+                  <select value={newStufe} onChange={e => setNewStufe(parseInt(e.target.value))}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value={1}>Planungsvariante VM</option>
+                    <option value={2}>Planungsvariante VBA</option>
+                    <option value={3}>Planungsvariante HB</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Betreuer</label>
+                <select value={newBetreuer} onChange={e => setNewBetreuer(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Kein Betreuer</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+              {msg && <div className={`rounded-xl px-4 py-2 text-sm font-medium ${msg.includes('✓') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>{msg}</div>}
+              <button onClick={createUser} disabled={creating}
+                className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+                {creating ? 'Wird angelegt...' : '+ Partner anlegen'}
+              </button>
             </div>
           </div>
         )}
