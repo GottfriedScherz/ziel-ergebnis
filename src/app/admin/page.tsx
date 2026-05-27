@@ -83,7 +83,7 @@ export default function Admin() {
                     <td className="px-4 py-3">
                       <select value={u.karrierestufe} onChange={e => updateUser(u.id, 'karrierestufe', parseInt(e.target.value))}
                         className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                        <option value={1}>Stufe 1</option><option value={2}>Stufe 2</option><option value={3}>Stufe 3</option>
+                        <option value={1}>Planungsvariante VM</option><option value={2}>Planungsvariante VBA</option><option value={3}>Planungsvariante HB</option>
                       </select>
                     </td>
                     <td className="px-4 py-3">
@@ -121,7 +121,7 @@ export default function Admin() {
                       <td className="px-4 py-3">
                         <select value={z.stufe_min} onChange={e => updateZeile(z.id, 'stufe_min', parseInt(e.target.value))}
                           className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                          <option value={1}>Stufe 1+</option><option value={2}>Stufe 2+</option><option value={3}>Stufe 3</option>
+                          <option value={1}>VM (alle)</option><option value={2}>VBA + HB</option><option value={3}>Nur HB</option>
                         </select>
                       </td>
                       <td className="px-4 py-3">
@@ -139,7 +139,7 @@ export default function Admin() {
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <select value={newStufeMin} onChange={e => setNewStufeMin(parseInt(e.target.value))}
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-                  <option value={1}>Stufe 1+</option><option value={2}>Stufe 2+</option><option value={3}>Stufe 3</option>
+                  <option value={1}>VM (alle)</option><option value={2}>VBA + HB</option><option value={3}>Nur HB</option>
                 </select>
                 <button onClick={addZeile} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Hinzufügen</button>
               </div>

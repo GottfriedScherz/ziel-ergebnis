@@ -54,7 +54,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Willkommen, {profile.name.split(' ')[0]}!</h2>
-            <p className="text-gray-500 text-sm">Karrierestufe {profile.karrierestufe}</p>
+            <p className="text-gray-500 text-sm">{profile.karrierestufe === 1 ? 'Planungsvariante VM' : profile.karrierestufe === 2 ? 'Planungsvariante VBA' : 'Planungsvariante HB'}</p>
           </div>
           <Link href="/bericht" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">+ Neuer Wochenbericht</Link>
         </div>
