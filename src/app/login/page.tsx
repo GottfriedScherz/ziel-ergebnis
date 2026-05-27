@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,10 +13,38 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError('E-Mail oder Passwort falsch.'); setLoading(false) }
-    else router.push('/dashboard')
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      )
+
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        setError('E-Mail oder Passwort falsch.')
+        setLoading(false)
+        return
+      }
+
+      // Store session
+      localStorage.setItem('sb_access_token', data.access_token)
+      localStorage.setItem('sb_refresh_token', data.refresh_token)
+      localStorage.setItem('sb_user', JSON.stringify(data.user))
+
+      router.push('/dashboard')
+    } catch (err) {
+      setError('Verbindungsfehler. Bitte versuche es erneut.')
+      setLoading(false)
+    }
   }
 
   return (
