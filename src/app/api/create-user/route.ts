@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY!
 
-  // Try admin API first, fall back to signup
   const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: 'POST',
     headers: {
@@ -22,10 +21,8 @@ export async function POST(req: NextRequest) {
   })
 
   const authText = await authRes.text()
-  console.log('Auth status:', authRes.status, 'Body:', authText)
 
   if (!authRes.ok) {
-    // Try signup endpoint as fallback
     const signupRes = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
       method: 'POST',
       headers: {
@@ -37,37 +34,42 @@ export async function POST(req: NextRequest) {
     })
 
     const signupText = await signupRes.text()
-    console.log('Signup status:', signupRes.status, 'Body:', signupText)
 
     if (!signupRes.ok) {
       let errMsg = 'Fehler beim Anlegen des Nutzers.'
       try {
         const d = JSON.parse(signupText)
-        const msg = d.msg || d.message || d.error_description || ''
-        if (msg.toLowerCase().includes('already')) errMsg = 'Diese E-Mail ist bereits registriert.'
-        else if (msg.toLowerCase().includes('password')) errMsg = 'Passwort zu schwach (min. 8 Zeichen, Groß-/Kleinbuchstaben, Zahl).'
-        else if (msg) errMsg = msg
+        const msg = (d.msg || d.message || d.error_description || '').toLowerCase()
+        if (msg.includes('already') || msg.includes('registered') || msg.includes('exist')) {
+          errMsg = 'Diese E-Mail-Adresse ist bereits registriert.'
+        } else if (msg.includes('password') || msg.includes('weak')) {
+          errMsg = 'Passwort zu schwach (mindestens 6 Zeichen).'
+        } else if (msg.includes('invalid') && msg.includes('email')) {
+          errMsg = 'Ungültige E-Mail-Adresse.'
+        } else if (d.msg || d.message) {
+          errMsg = d.msg || d.message
+        }
       } catch(e) {}
+      // 422 is almost always duplicate email
+      if (signupRes.status === 422) errMsg = 'Diese E-Mail-Adresse ist bereits registriert.'
       return NextResponse.json({ error: errMsg }, { status: 400 })
     }
 
     const signupData = JSON.parse(signupText)
     const userId = signupData.id || signupData.user?.id
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Nutzer angelegt aber ID nicht gefunden. Bitte in Supabase Profil manuell anlegen.' }, { status: 400 })
-    }
-
-    // Create profile with service key
+    if (!userId) return NextResponse.json({ error: 'Nutzer angelegt aber ID nicht gefunden.' }, { status: 400 })
     await createProfile(SUPABASE_URL, SERVICE_KEY, userId, name, email, karrierestufe, betreuer_id)
     return NextResponse.json({ success: true, userId })
   }
 
-  const authData = JSON.parse(authText)
-  const userId = authData.id
+  // Also handle 422 from admin endpoint
+  if (authRes.status === 422) {
+    return NextResponse.json({ error: 'Diese E-Mail-Adresse ist bereits registriert.' }, { status: 400 })
+  }
 
-  await createProfile(SUPABASE_URL, SERVICE_KEY, userId, name, email, karrierestufe, betreuer_id)
-  return NextResponse.json({ success: true, userId })
+  const authData = JSON.parse(authText)
+  await createProfile(SUPABASE_URL, SERVICE_KEY, authData.id, name, email, karrierestufe, betreuer_id)
+  return NextResponse.json({ success: true, userId: authData.id })
 }
 
 async function createProfile(url: string, key: string, userId: string, name: string, email: string, karrierestufe: any, betreuer_id: any) {
