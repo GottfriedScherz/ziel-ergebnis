@@ -81,20 +81,20 @@ export default function Einstellungen() {
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Neue E-Mail-Adresse</label>
               <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                placeholder="Neue E-Mail (leer lassen = keine Änderung)"
+                placeholder="Neue E-Mail (leer lassen = keine Änderung)" autoComplete="off"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Neues Passwort</label>
               <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)}
-                placeholder="Neues Passwort (leer lassen = keine Änderung)"
+                placeholder="Neues Passwort (leer lassen = keine Änderung)" autoComplete="new-password"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             {newPw && (
               <div>
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Passwort bestätigen</label>
                 <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
-                  placeholder="Passwort wiederholen"
+                  placeholder="Passwort wiederholen" autoComplete="new-password"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             )}
