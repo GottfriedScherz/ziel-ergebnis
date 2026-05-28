@@ -18,6 +18,41 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
   const lastDay = new Date(year, monthIdx + 1, 0).getDate()
 
   const firstOfMonth = new Date(year, monthIdx, 1)
+  const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1 // 0=Mo..6=So
+
+  // Mo/Di/Mi (dow 0,1,2) → go back to Monday of this week
+  // Do/Fr/Sa/So (dow 3,4,5,6) → first Monday is next week
+  let monday: Date
+  if (dow <= 2) {
+    monday = new Date(year, monthIdx, 1 - dow)
+  } else {
+    monday = new Date(year, monthIdx, 1 + (7 - dow))
+  }
+
+  const weeks: {label: string, value: string}[] = []
+  let weekNum = 1
+
+  while (monday <= new Date(year, monthIdx, lastDay)) {
+    const sunday = new Date(monday.getTime() + 6 * 86400000)
+    weeks.push({
+      label: `${fmt(monday)} – ${fmt(sunday)}`,
+      value: `Woche ${weekNum}`
+    })
+    weekNum++
+    monday = new Date(monday.getTime() + 7 * 86400000)
+  }
+  return weeks
+}[] {
+  const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+  const year = new Date().getFullYear()
+  const monthIdx = MONATE_IDX.indexOf(monatName)
+  if (monthIdx === -1) return []
+
+  const pad = (n: number) => String(n).padStart(2,'0')
+  const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
+  const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+
+  const firstOfMonth = new Date(year, monthIdx, 1)
   const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1
   let monday = new Date(year, monthIdx, 1 - dow)
 
