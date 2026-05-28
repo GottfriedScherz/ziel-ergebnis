@@ -73,10 +73,12 @@ export default function Einstellungen() {
             <div>
               <h2 className="font-semibold text-gray-700">{profile.name}</h2>
               <p className="text-sm text-gray-400">Aktuelle E-Mail: <span className="text-gray-600 font-medium">{profile.email}</span></p>
-              <p className="text-xs text-gray-400 mt-1">Klicke auf das Foto-Symbol um dein Profilbild zu ändern</p>
+              <p className="text-xs text-green-600 mt-1">✓ Foto wird sofort gespeichert</p>
             </div>
           </div>
 
+          <hr className="border-gray-100 my-2" />
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">E-Mail &amp; Passwort ändern</p>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Neue E-Mail-Adresse</label>
