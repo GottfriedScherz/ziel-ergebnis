@@ -138,7 +138,7 @@ function BerichtContent() {
           <div className="flex gap-3 flex-wrap mb-3">
             <div className="flex flex-col gap-1 flex-1 min-w-48">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</label>
-              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50">{profile.name}</div>
+              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50">{readonly && ownerName ? ownerName : profile.name}</div>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Monat</label>
