@@ -73,3 +73,57 @@ function PasswortSetzenContent() {
         <div className="text-4xl mb-4">⚠️</div>
         <h1 className="text-xl font-bold text-gray-800 mb-2">Link ungültig</h1>
         <p className="text-gray-500 text-sm mb-4">Der Link ist abgelaufen oder ungültig. Bitte deinen Betreuer um eine neue Einladung.</p>
+        <button onClick={() => router.push('/login')}
+          className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-blue-700 transition">
+          Zum Login
+        </button>
+      </div>
+    </div>
+  )
+
+  if (success) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="text-center">
+        <div className="text-4xl mb-4">✅</div>
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Passwort gesetzt!</h1>
+        <p className="text-gray-500 text-sm">Du wirst zum Dashboard weitergeleitet...</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">📊 Ziel & Ergebnis</h1>
+          <p className="text-gray-500 text-sm mt-1">Persönliches Passwort setzen</p>
+        </div>
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Neues Passwort</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+              autoComplete="new-password"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Mindestens 6 Zeichen" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Passwort bestätigen</label>
+            <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
+              autoComplete="new-password"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Passwort wiederholen" />
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <button type="submit" disabled={loading}
+            className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+            {loading ? 'Wird gespeichert...' : 'Passwort setzen & anmelden'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default function PasswortSetzen() {
+  return <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>}><PasswortSetzenContent /></Suspense>
+}
