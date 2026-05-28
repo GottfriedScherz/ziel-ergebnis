@@ -6,6 +6,41 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 
 const DAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']
+
+function getWeekOptions(monatName: string): {label: string, value: string}[] {
+  const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+  const year = new Date().getFullYear()
+  const monthIdx = MONATE_IDX.indexOf(monatName)
+  if (monthIdx === -1) return []
+  
+  const pad = (n: number) => String(n).padStart(2,'0')
+  const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
+  
+  const weeks: {label: string, value: string}[] = []
+  let day = new Date(year, monthIdx, 1)
+  let weekNum = 1
+  
+  while (day.getMonth() === monthIdx) {
+    const start = new Date(day)
+    // Find end of week (Sunday) or end of month
+    const end = new Date(day)
+    end.setDate(end.getDate() + (6 - end.getDay() === -1 ? 6 : 6 - end.getDay()))
+    if (end.getDay() === 0 && end !== start) end.setDate(end.getDate())
+    // Cap at end of month
+    const lastDay = new Date(year, monthIdx + 1, 0)
+    const weekEnd = end > lastDay ? lastDay : end
+    
+    weeks.push({
+      label: `Woche ${weekNum} (${fmt(start)} – ${fmt(weekEnd)})`,
+      value: `Woche ${weekNum}`
+    })
+    weekNum++
+    // Move to next Monday
+    day = new Date(weekEnd)
+    day.setDate(day.getDate() + 1)
+  }
+  return weeks
+}
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 
 function BerichtContent() {
@@ -151,7 +186,7 @@ function BerichtContent() {
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Woche</label>
               <select value={woche} onChange={e => setWoche(e.target.value)} disabled={readonly}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {['Woche 1','Woche 2','Woche 3','Woche 4','Woche 5'].map(w => <option key={w}>{w}</option>)}
+                {getWeekOptions(monat).map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
               </select>
             </div>
           </div>
