@@ -46,6 +46,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           {profile.is_admin && <Link href="/admin" className="text-sm text-blue-600 font-medium">Admin</Link>}
           <Link href="/analytics" className="text-sm text-blue-600 font-medium">Analytics</Link>
+          <Link href="/einstellungen" className="text-sm text-blue-600 font-medium">Einstellungen</Link>
           <span className="text-sm text-gray-500">{profile.name}</span>
           <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">Abmelden</button>
         </div>

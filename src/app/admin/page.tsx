@@ -12,15 +12,16 @@ export default function Admin() {
   const [users, setUsers] = useState<Profile[]>([])
   const [zeilen, setZeilen] = useState<FormZeile[]>([])
   const [tab, setTab] = useState<'users'|'form'|'neuer'>('users')
+  const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newStufe, setNewStufe] = useState(1)
+  const [newBetreuer, setNewBetreuer] = useState('')
   const [newZeile, setNewZeile] = useState('')
   const [newStufeMin, setNewStufeMin] = useState(1)
   const [msg, setMsg] = useState('')
-  const [newName, setNewName] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [newPw, setNewPw] = useState('')
-  const [newStufe, setNewStufe] = useState(1)
-  const [newBetreuer, setNewBetreuer] = useState('')
+  const [msgType, setMsgType] = useState<'ok'|'err'|'info'>('info')
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string|null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -35,9 +36,31 @@ export default function Admin() {
     })
   }, [router])
 
+  function showMsg(text: string, type: 'ok'|'err'|'info' = 'info') {
+    setMsg(text); setMsgType(type)
+    setTimeout(() => setMsg(''), 4000)
+  }
+
   async function updateUser(id: string, field: string, value: any) {
     await dbUpdate('profiles', `id=eq.${id}`, { [field]: value })
     setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
+  }
+
+  async function deleteUser(id: string, name: string) {
+    if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
+    setDeletingId(id)
+    const res = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: id })
+    })
+    const data = await res.json()
+    setDeletingId(null)
+    if (data.error) showMsg('Fehler: ' + data.error, 'err')
+    else {
+      setUsers(prev => prev.filter(u => u.id !== id))
+      showMsg(`${name} wurde gelöscht.`, 'ok')
+    }
   }
 
   async function updateZeile(id: string, field: string, value: any) {
@@ -50,30 +73,26 @@ export default function Admin() {
     const maxOrd = Math.max(...zeilen.map(z => z.reihenfolge), 0)
     const data = await dbInsert('formular_zeilen', { name: newZeile, reihenfolge: maxOrd + 1, stufe_min: newStufeMin, aktiv: true })
     if (data?.[0]) { setZeilen(prev => [...prev, data[0]]); setNewZeile('') }
-    setMsg('Zeile hinzugefügt ✓')
-    setTimeout(() => setMsg(''), 2000)
+    showMsg('Zeile hinzugefügt ✓', 'ok')
   }
 
   async function createUser() {
-    if (!newName || !newEmail || !newPw) { setMsg('Bitte alle Pflichtfelder ausfüllen.'); return }
+    if (!newName || !newEmail) { showMsg('Bitte Name und E-Mail ausfüllen.', 'err'); return }
     setCreating(true)
-    setMsg('')
     const res = await fetch('/api/create-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName, email: newEmail, password: newPw, karrierestufe: newStufe, betreuer_id: newBetreuer || null })
+      body: JSON.stringify({ name: newName, email: newEmail, karrierestufe: newStufe, betreuer_id: newBetreuer || null })
     })
     const data = await res.json()
+    setCreating(false)
     if (data.error) {
-      setMsg('Fehler: ' + data.error)
+      showMsg('Fehler: ' + data.error, 'err')
     } else {
-      setMsg('✓ Partner erfolgreich angelegt!')
-      setNewName(''); setNewEmail(''); setNewPw(''); setNewStufe(1); setNewBetreuer('')
-      // Refresh users list
+      showMsg('✓ Partner angelegt! Einladungsmail wurde verschickt.', 'ok')
+      setNewName(''); setNewEmail(''); setNewStufe(1); setNewBetreuer('')
       dbQuery('profiles', 'select=*&order=name').then(u => setUsers(u || []))
     }
-    setCreating(false)
-    setTimeout(() => setMsg(''), 4000)
   }
 
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
@@ -90,18 +109,28 @@ export default function Admin() {
           {(['users','form','neuer'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab===t ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-              {t === 'users' ? '👥 Nutzer' : t === 'form' ? '📋 Formular' : '➕ Neuer Nutzer'}
+              {t === 'users' ? '👥 Nutzer' : t === 'form' ? '📋 Formular' : '➕ Neuer Partner'}
             </button>
           ))}
         </div>
+
+        {msg && (
+          <div className={`rounded-xl px-4 py-2 mb-4 text-sm font-medium ${
+            msgType === 'ok' ? 'bg-green-50 border border-green-200 text-green-700' :
+            msgType === 'err' ? 'bg-red-50 border border-red-200 text-red-700' :
+            'bg-blue-50 border border-blue-200 text-blue-700'
+          }`}>{msg}</div>
+        )}
+
         {tab === 'users' && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <table className="w-full">
               <thead><tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Stufe</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Planungsvariante</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Betreuer</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Admin</th>
+                <th className="px-4 py-3" />
               </tr></thead>
               <tbody>
                 {users.map(u => (
@@ -110,7 +139,9 @@ export default function Admin() {
                     <td className="px-4 py-3">
                       <select value={u.karrierestufe} onChange={e => updateUser(u.id, 'karrierestufe', parseInt(e.target.value))}
                         className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                        <option value={1}>Planungsvariante VM</option><option value={2}>Planungsvariante VBA</option><option value={3}>Planungsvariante HB</option>
+                        <option value={1}>Planungsvariante VM</option>
+                        <option value={2}>Planungsvariante VBA</option>
+                        <option value={3}>Planungsvariante HB</option>
                       </select>
                     </td>
                     <td className="px-4 py-3">
@@ -123,12 +154,21 @@ export default function Admin() {
                     <td className="px-4 py-3">
                       <input type="checkbox" checked={u.is_admin} onChange={e => updateUser(u.id, 'is_admin', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                     </td>
+                    <td className="px-4 py-3">
+                      {u.id !== profile.id && (
+                        <button onClick={() => deleteUser(u.id, u.name)} disabled={deletingId === u.id}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40">
+                          {deletingId === u.id ? '...' : 'Löschen'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+
         {tab === 'form' && (
           <div className="space-y-3">
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -148,7 +188,9 @@ export default function Admin() {
                       <td className="px-4 py-3">
                         <select value={z.stufe_min} onChange={e => updateZeile(z.id, 'stufe_min', parseInt(e.target.value))}
                           className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                          <option value={1}>VM (alle)</option><option value={2}>VBA + HB</option><option value={3}>Nur HB</option>
+                          <option value={1}>VM (alle)</option>
+                          <option value={2}>VBA + HB</option>
+                          <option value={3}>Nur HB</option>
                         </select>
                       </td>
                       <td className="px-4 py-3">
@@ -166,16 +208,20 @@ export default function Admin() {
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <select value={newStufeMin} onChange={e => setNewStufeMin(parseInt(e.target.value))}
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-                  <option value={1}>VM (alle)</option><option value={2}>VBA + HB</option><option value={3}>Nur HB</option>
+                  <option value={1}>VM (alle)</option>
+                  <option value={2}>VBA + HB</option>
+                  <option value={3}>Nur HB</option>
                 </select>
                 <button onClick={addZeile} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Hinzufügen</button>
               </div>
             </div>
           </div>
         )}
+
         {tab === 'neuer' && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-700 mb-4">Neuen Partner anlegen</h3>
+            <h3 className="font-semibold text-gray-700 mb-1">Neuen Partner anlegen</h3>
+            <p className="text-sm text-gray-400 mb-4">Der Partner erhält automatisch eine Einladungsmail und setzt sein Passwort selbst.</p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
@@ -191,11 +237,6 @@ export default function Admin() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Passwort</label>
-                  <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Initiales Passwort"
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Planungsvariante</label>
                   <select value={newStufe} onChange={e => setNewStufe(parseInt(e.target.value))}
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -204,19 +245,18 @@ export default function Admin() {
                     <option value={3}>Planungsvariante HB</option>
                   </select>
                 </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Betreuer</label>
+                  <select value={newBetreuer} onChange={e => setNewBetreuer(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Kein Betreuer</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Betreuer</label>
-                <select value={newBetreuer} onChange={e => setNewBetreuer(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Kein Betreuer</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-              </div>
-              {msg && <div className={`rounded-xl px-4 py-2 text-sm font-medium ${msg.includes('✓') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>{msg}</div>}
               <button onClick={createUser} disabled={creating}
                 className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
-                {creating ? 'Wird angelegt...' : '+ Partner anlegen'}
+                {creating ? 'Wird angelegt...' : '✉️ Partner anlegen & Einladung senden'}
               </button>
             </div>
           </div>
