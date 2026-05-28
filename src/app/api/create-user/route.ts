@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       'apikey': SERVICE_KEY,
       'Authorization': `Bearer ${SERVICE_KEY}`,
     },
-    body: JSON.stringify({ type: 'recovery', redirect_to: APP_URL })
+    body: JSON.stringify({ type: 'recovery', redirect_to: `${APP_URL}/passwort-setzen` })
   })
 
   let resetLink = APP_URL
