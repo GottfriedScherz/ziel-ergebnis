@@ -46,13 +46,22 @@ export async function POST(req: NextRequest) {
       'apikey': SERVICE_KEY,
       'Authorization': `Bearer ${SERVICE_KEY}`,
     },
-    body: JSON.stringify({ type: 'recovery', redirect_to: `${APP_URL}/passwort-setzen` })
+    body: JSON.stringify({ 
+      type: 'recovery', 
+      redirect_to: `${APP_URL}/passwort-setzen`,
+      email: email
+    })
   })
 
-  let resetLink = APP_URL
+  let resetLink = `${APP_URL}/passwort-setzen`
   if (resetRes.ok) {
     const resetData = await resetRes.json()
-    resetLink = resetData.action_link || APP_URL
+    console.log('generate_link response:', JSON.stringify(resetData))
+    resetLink = resetData.action_link 
+      ? resetData.action_link 
+      : resetData.hashed_token 
+        ? `${SUPABASE_URL}/auth/v1/verify?token=${resetData.hashed_token}&type=recovery&redirect_to=${APP_URL}/passwort-setzen`
+        : resetLink
   }
 
   // 3. Create profile
