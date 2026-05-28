@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 function PasswortSetzenContent() {
   const [password, setPassword] = useState('')
@@ -8,53 +8,76 @@ function PasswortSetzenContent() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [token, setToken] = useState('')
+  const [token, setToken] = useState<string | null>(null)
+  const [checking, setChecking] = useState(true)
   const router = useRouter()
-  const params = useSearchParams()
 
   useEffect(() => {
-    // Token can be in URL hash or query params
-    const hash = window.location.hash
-    const urlParams = new URLSearchParams(hash.replace('#', '?'))
-    const accessToken = urlParams.get('access_token') || params.get('access_token') || params.get('token')
-    if (accessToken) setToken(accessToken)
-  }, [params])
+    // Supabase puts tokens in the URL hash: #access_token=xxx&type=recovery
+    const hash = window.location.hash.substring(1)
+    const params = new URLSearchParams(hash)
+    const accessToken = params.get('access_token')
+    const type = params.get('type')
+    
+    console.log('Hash:', hash)
+    console.log('Access token:', accessToken)
+    console.log('Type:', type)
+
+    if (accessToken) {
+      setToken(accessToken)
+    } else {
+      // Also check query string
+      const queryParams = new URLSearchParams(window.location.search)
+      const queryToken = queryParams.get('access_token') || queryParams.get('token')
+      if (queryToken) setToken(queryToken)
+    }
+    setChecking(false)
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (password !== confirm) { setError('Passwörter stimmen nicht überein.'); return }
     if (password.length < 6) { setError('Passwort muss mindestens 6 Zeichen haben.'); return }
-    if (!token) { setError('Kein gültiger Token gefunden. Bitte den Link aus der E-Mail erneut öffnen.'); return }
+    if (!token) { setError('Kein gültiger Token. Bitte den Link aus der E-Mail erneut öffnen.'); return }
 
     setLoading(true)
     setError('')
 
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ password })
+    const res = await fetch('/api/update-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword: password, accessToken: token })
     })
 
     const data = await res.json()
     setLoading(false)
 
-    if (!res.ok) {
-      setError(data.message || 'Fehler beim Setzen des Passworts. Bitte den Link erneut anfordern.')
+    if (data.error) {
+      setError(data.error)
     } else {
-      // Save session
       localStorage.setItem('sb_access_token', token)
-      if (data.id) localStorage.setItem('sb_user', JSON.stringify(data))
       setSuccess(true)
       setTimeout(() => router.push('/dashboard'), 2000)
     }
   }
+
+  if (checking) return (
+    <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
+  )
+
+  if (!token) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="text-center max-w-sm">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Link ungültig</h1>
+        <p className="text-gray-500 text-sm mb-4">Der Link ist abgelaufen oder ungültig. Bitte deinen Betreuer um eine neue Einladung.</p>
+        <button onClick={() => router.push('/login')}
+          className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-blue-700 transition">
+          Zum Login
+        </button>
+      </div>
+    </div>
+  )
 
   if (success) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -90,7 +113,7 @@ function PasswortSetzenContent() {
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button type="submit" disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+            className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
             {loading ? 'Wird gespeichert...' : 'Passwort setzen & anmelden'}
           </button>
         </form>
