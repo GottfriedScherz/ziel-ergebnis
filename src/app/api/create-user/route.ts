@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
   const userId = signupData.id || signupData.user?.id
   if (!userId) return NextResponse.json({ error: 'Nutzer angelegt aber ID nicht gefunden.' }, { status: 400 })
 
-  // 2. Generate password reset link so user can set own password
-  const resetRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}/generate_link`, {
+  // 2. Generate password reset link
+  const resetRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -47,21 +47,19 @@ export async function POST(req: NextRequest) {
       'Authorization': `Bearer ${SERVICE_KEY}`,
     },
     body: JSON.stringify({ 
-      type: 'recovery', 
-      redirect_to: `${APP_URL}/passwort-setzen`,
-      email: email
+      type: 'recovery',
+      email: email,
+      redirect_to: `${APP_URL}/passwort-setzen`
     })
   })
 
+  const resetData = await resetRes.json()
+  console.log('generate_link status:', resetRes.status)
+  console.log('generate_link response:', JSON.stringify(resetData))
+
   let resetLink = `${APP_URL}/passwort-setzen`
-  if (resetRes.ok) {
-    const resetData = await resetRes.json()
-    console.log('generate_link response:', JSON.stringify(resetData))
-    resetLink = resetData.action_link 
-      ? resetData.action_link 
-      : resetData.hashed_token 
-        ? `${SUPABASE_URL}/auth/v1/verify?token=${resetData.hashed_token}&type=recovery&redirect_to=${APP_URL}/passwort-setzen`
-        : resetLink
+  if (resetRes.ok && resetData.action_link) {
+    resetLink = resetData.action_link
   }
 
   // 3. Create profile
