@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dbQuery, dbInsert, dbUpdate, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 
 interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null }
 interface FormZeile { id: string; name: string; reihenfolge: number; stufe_min: number; aktiv: boolean }
@@ -135,7 +136,15 @@ export default function Admin() {
               <tbody>
                 {users.map(u => (
                   <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">{u.name}<br/><span className="text-xs text-gray-400">{u.email}</span></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar url={u.avatar_url as any} name={u.name} size={36} editable userId={u.id} onUpdate={url => setUsers(prev => prev.map(x => x.id === u.id ? {...x, avatar_url: url} : x))} />
+                        <div>
+                          <div className="text-sm font-medium text-gray-700">{u.name}</div>
+                          <div className="text-xs text-gray-400">{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <select value={u.karrierestufe} onChange={e => updateUser(u.id, 'karrierestufe', parseInt(e.target.value))}
                         className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
