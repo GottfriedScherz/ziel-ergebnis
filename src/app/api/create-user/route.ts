@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
           'Authorization': `Bearer ${RESEND_KEY}`,
         },
         body: JSON.stringify({
-          from: 'Ziel & Ergebnis <onboarding@resend.dev>',
+          from: 'Ziel & Ergebnis <noreply@finanziellfrei.at>',
           to: email,
           subject: 'Willkommen bei Ziel & Ergebnis – Bitte Passwort setzen',
           html: emailHtml,
