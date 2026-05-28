@@ -12,32 +12,73 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
   const year = new Date().getFullYear()
   const monthIdx = MONATE_IDX.indexOf(monatName)
   if (monthIdx === -1) return []
-  
+
   const pad = (n: number) => String(n).padStart(2,'0')
   const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
-  
+  const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+
+  const firstOfMonth = new Date(year, monthIdx, 1)
+  const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1
+  let monday = new Date(year, monthIdx, 1 - dow)
+
   const weeks: {label: string, value: string}[] = []
-  let day = new Date(year, monthIdx, 1)
   let weekNum = 1
-  
-  while (day.getMonth() === monthIdx) {
-    const start = new Date(day)
-    // Find end of week (Sunday) or end of month
-    const end = new Date(day)
-    end.setDate(end.getDate() + (6 - end.getDay() === -1 ? 6 : 6 - end.getDay()))
-    if (end.getDay() === 0 && end !== start) end.setDate(end.getDate())
-    // Cap at end of month
-    const lastDay = new Date(year, monthIdx + 1, 0)
-    const weekEnd = end > lastDay ? lastDay : end
-    
-    weeks.push({
-      label: `Woche ${weekNum} (${fmt(start)} – ${fmt(weekEnd)})`,
-      value: `Woche ${weekNum}`
-    })
+
+  while (true) {
+    const sunday = new Date(monday.getTime() + 6 * 86400000)
+    const startIn = new Date(Math.max(monday.getTime(), new Date(year, monthIdx, 1).getTime()))
+    const endIn = new Date(Math.min(sunday.getTime(), new Date(year, monthIdx, lastDay).getTime()))
+    weeks.push({ label: `${fmt(startIn)} – ${fmt(endIn)}`, value: `Woche ${weekNum}` })
     weekNum++
+    monday = new Date(monday.getTime() + 7 * 86400000)
+    if (monday.getMonth() !== monthIdx) break
+  }
+  return weeks
+}[] {
+  const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+  const year = new Date().getFullYear()
+  const monthIdx = MONATE_IDX.indexOf(monatName)
+  if (monthIdx === -1) return []
+
+  const pad = (n: number) => String(n).padStart(2,'0')
+  const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
+  const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+
+  // Find first Monday of or before the 1st of the month
+  const firstOfMonth = new Date(year, monthIdx, 1)
+  const dayOfWeek = firstOfMonth.getDay() // 0=So, 1=Mo, ..., 6=Sa
+  // Days since last Monday (Mo=0, Di=1, ... So=6)
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  let monday = new Date(year, monthIdx, 1 - daysSinceMonday)
+
+  const weeks: {label: string, value: string}[] = []
+  let weekNum = 1
+
+  while (true) {
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+
+    // Week must overlap with this month
+    const weekStartInMonth = monday.getMonth() === monthIdx ? monday.getDate() : 1
+    const weekEndInMonth = sunday.getMonth() === monthIdx ? sunday.getDate() : lastDay
+
+    // Display dates clamped to month
+    const dispStart = new Date(year, monthIdx, weekStartInMonth)
+    const dispEnd = new Date(year, monthIdx, weekEndInMonth)
+
+    const label = `${fmt(dispStart)} – ${fmt(dispEnd)}`
+    const value = `Woche ${weekNum}`
+
+    weeks.push({ label, value })
+    weekNum++
+
     // Move to next Monday
-    day = new Date(weekEnd)
-    day.setDate(day.getDate() + 1)
+    monday = new Date(monday)
+    monday.setDate(monday.getDate() + 7)
+
+    // Stop when next Monday is past end of month
+    if (monday.getMonth() !== monthIdx && monday > new Date(year, monthIdx, lastDay)) break
+    if (monday.getMonth() !== monthIdx) break
   }
   return weeks
 }
