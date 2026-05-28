@@ -3,22 +3,22 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dbQuery, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts'
 
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
-const COLORS = ['#2a6fa8','#27500A','#7c3aed','#d97706','#dc2626','#0891b2','#65a30d']
 
 export default function Analytics() {
   const [profile, setProfile] = useState<any>(null)
   const [allUsers, setAllUsers] = useState<any[]>([])
   const [visibleUsers, setVisibleUsers] = useState<any[]>([])
   const [selectedUser, setSelectedUser] = useState<string>('all')
+  const [inclSubtree, setInclSubtree] = useState(true)
   const [berichte, setBerichte] = useState<any[]>([])
   const [eintraege, setEintraege] = useState<any[]>([])
   const [filterMonat, setFilterMonat] = useState('alle')
+  const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({})
   const router = useRouter()
 
-  // Recursively get all user IDs in hierarchy under a given user
   function getSubtreeIds(userId: string, users: any[]): string[] {
     const direct = users.filter(u => u.betreuer_id === userId).map(u => u.id)
     const indirect = direct.flatMap(id => getSubtreeIds(id, users))
@@ -32,11 +32,8 @@ export default function Analytics() {
       const prof = data?.[0]
       if (!prof) { router.push('/login'); return }
       setProfile(prof)
-
       const allProfiles = await dbQuery('profiles', 'select=*&order=name') || []
       setAllUsers(allProfiles)
-
-      // Determine which users this person can see
       let visible: any[]
       if (prof.is_admin) {
         visible = allProfiles
@@ -51,25 +48,24 @@ export default function Analytics() {
   useEffect(() => {
     if (!profile || visibleUsers.length === 0) return
     loadData()
-  }, [selectedUser, profile, visibleUsers])
+  }, [selectedUser, inclSubtree, profile, visibleUsers])
 
   async function loadData() {
     let userIds: string[]
     if (selectedUser === 'all') {
       userIds = visibleUsers.map((u: any) => u.id)
+    } else if (inclSubtree) {
+      const subtreeIds = getSubtreeIds(selectedUser, allUsers)
+      userIds = [selectedUser, ...subtreeIds]
     } else {
       userIds = [selectedUser]
     }
-
     if (userIds.length === 0) return
-
     const idFilter = userIds.length === 1
       ? `user_id=eq.${userIds[0]}`
       : `user_id=in.(${userIds.join(',')})`
-
     const b = await dbQuery('berichte', `${idFilter}&select=*&order=jahr,monat`) || []
     setBerichte(b)
-
     if (b.length > 0) {
       const bIds = b.map((x: any) => x.id)
       const e = await dbQuery('eintraege', `bericht_id=in.(${bIds.join(',')})&select=*`) || []
@@ -114,6 +110,19 @@ export default function Analytics() {
     .filter(e => e.zeile === zeile)
     .reduce((s, e: any) => s + (e.stattgefunden || 0), 0)
 
+  function toggleLine(dataKey: string) {
+    setHiddenLines(prev => ({ ...prev, [dataKey]: !prev[dataKey] }))
+  }
+
+  const lines = [
+    { key: 'Beratungen', color: '#2a6fa8', yAxis: 'left' },
+    { key: 'Abschlüsse', color: '#27500A', yAxis: 'left' },
+    { key: 'Einheiten', color: '#7c3aed', yAxis: 'right' },
+    { key: 'Empfehlungen', color: '#d97706', yAxis: 'left' },
+  ]
+
+  const hasSubtree = selectedUser !== 'all' && getSubtreeIds(selectedUser, allUsers).length > 0
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -122,15 +131,28 @@ export default function Analytics() {
         <div className="w-20" />
       </nav>
       <div className="max-w-5xl mx-auto px-4 py-6">
+
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-5 flex gap-3 flex-wrap items-end">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Ansicht</label>
-            <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)}
+            <select value={selectedUser} onChange={e => { setSelectedUser(e.target.value); setInclSubtree(true) }}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Gesamte Struktur</option>
               {visibleUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </div>
+          {hasSubtree && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Unterstruktur</label>
+              <button onClick={() => setInclSubtree(p => !p)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition ${inclSubtree ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${inclSubtree ? 'border-white' : 'border-gray-400'}`}>
+                  {inclSubtree && <span className="text-white text-xs">✓</span>}
+                </span>
+                Inkl. Unterstruktur
+              </button>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Monat</label>
             <select value={filterMonat} onChange={e => setFilterMonat(e.target.value)}
@@ -151,16 +173,30 @@ export default function Analytics() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Aktivitäten-Entwicklung</h3>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className="font-semibold text-gray-700">Aktivitäten-Entwicklung</h3>
+            <div className="flex gap-2 flex-wrap">
+              {lines.map(l => (
+                <button key={l.key} onClick={() => toggleLine(l.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${hiddenLines[l.key] ? 'opacity-40 bg-gray-100 border-gray-200' : 'bg-white border-gray-300'}`}>
+                  <span className="w-2.5 h-2.5 rounded-full inline-block" style={{backgroundColor: l.color}} />
+                  {l.key}
+                  {l.yAxis === 'right' && <span className="text-gray-400 text-xs">(R)</span>}
+                </button>
+              ))}
+            </div>
+          </div>
           {chartData.length === 0 ? <p className="text-gray-400 text-sm">Noch keine Daten vorhanden.</p> : (
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData}>
-                <XAxis dataKey="name" tick={{fontSize:10}} /><YAxis tick={{fontSize:11}} />
-                <Tooltip /><Legend />
-                <Line type="monotone" dataKey="Beratungen" stroke="#2a6fa8" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Abschlüsse" stroke="#27500A" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Einheiten" stroke="#7c3aed" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Empfehlungen" stroke="#d97706" strokeWidth={2} dot />
+                <XAxis dataKey="name" tick={{fontSize:10}} />
+                <YAxis yAxisId="left" tick={{fontSize:11}} />
+                <YAxis yAxisId="right" orientation="right" tick={{fontSize:11}} />
+                <Tooltip />
+                {lines.map(l => (
+                  <Line key={l.key} yAxisId={l.yAxis as 'left'|'right'} type="monotone" dataKey={l.key}
+                    stroke={l.color} strokeWidth={2} dot hide={!!hiddenLines[l.key]} />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -171,7 +207,8 @@ export default function Analytics() {
           {eeData.length === 0 ? <p className="text-gray-400 text-sm">Noch keine Daten vorhanden.</p> : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={eeData}>
-                <XAxis dataKey="name" tick={{fontSize:10}} /><YAxis tick={{fontSize:11}} />
+                <XAxis dataKey="name" tick={{fontSize:10}} />
+                <YAxis tick={{fontSize:11}} />
                 <Tooltip /><Legend />
                 <Bar dataKey="EE Ziel" fill="#d8edbe" stroke="#27500A" strokeWidth={1} />
                 <Bar dataKey="EE Stand" fill="#27500A" />
