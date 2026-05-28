@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dbQuery, getToken, getUser, logout } from '@/lib/supabase'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 
 export default function Einstellungen() {
   const [profile, setProfile] = useState<any>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
   const [newEmail, setNewEmail] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
@@ -18,7 +20,7 @@ export default function Einstellungen() {
     if (!getToken()) { router.push('/login'); return }
     const user = getUser()
     dbQuery('profiles', `id=eq.${user.id}&select=*`).then(data => {
-      if (data?.[0]) setProfile(data[0])
+      if (data?.[0]) { setProfile(data[0]); setAvatarUrl(data[0].avatar_url || null) }
       else router.push('/login')
     })
   }, [router])
@@ -66,8 +68,14 @@ export default function Einstellungen() {
       </nav>
       <div className="max-w-lg mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-4">
-          <h2 className="font-semibold text-gray-700 mb-1">Dein Konto</h2>
-          <p className="text-sm text-gray-400 mb-5">Aktuelle E-Mail: <span className="text-gray-600 font-medium">{profile.email}</span></p>
+          <div className="flex items-center gap-4 mb-5">
+            <Avatar url={avatarUrl} name={profile.name} size={72} editable userId={profile.id} onUpdate={url => setAvatarUrl(url)} />
+            <div>
+              <h2 className="font-semibold text-gray-700">{profile.name}</h2>
+              <p className="text-sm text-gray-400">Aktuelle E-Mail: <span className="text-gray-600 font-medium">{profile.email}</span></p>
+              <p className="text-xs text-gray-400 mt-1">Klicke auf das Foto-Symbol um dein Profilbild zu ändern</p>
+            </div>
+          </div>
 
           <div className="space-y-4">
             <div>

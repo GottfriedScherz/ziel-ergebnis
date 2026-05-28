@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dbQuery, getUser, getToken, logout } from '@/lib/supabase'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [berichte, setBerichte] = useState<any[]>([])
   const [teamBerichte, setTeamBerichte] = useState<any[]>([])
+  const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -19,6 +21,7 @@ export default function Dashboard() {
       const prof = data?.[0]
       if (!prof) { router.push('/login'); return }
       setProfile(prof)
+      setAvatarUrl(prof.avatar_url || null)
 
       dbQuery('berichte', `user_id=eq.${user.id}&select=*&order=updated_at.desc&limit=10`).then(d => setBerichte(d || []))
 
@@ -47,7 +50,7 @@ export default function Dashboard() {
           {profile.is_admin && <Link href="/admin" className="text-sm text-blue-600 font-medium">Admin</Link>}
           <Link href="/analytics" className="text-sm text-blue-600 font-medium">Analytics</Link>
           <Link href="/einstellungen" className="text-sm text-blue-600 font-medium">Einstellungen</Link>
-          <span className="text-sm text-gray-500">{profile.name}</span>
+          <div className="flex items-center gap-2"><Avatar url={avatarUrl} name={profile.name} size={32} /><span className="text-sm text-gray-500">{profile.name}</span></div>
           <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">Abmelden</button>
         </div>
       </nav>

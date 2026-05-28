@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { dbQuery, dbInsert, dbUpdate, dbDelete, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 import { Suspense } from 'react'
 
 const DAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']
@@ -59,6 +60,7 @@ function BerichtContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [ownerName, setOwnerName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
 
   useEffect(() => {
     if (!getToken()) { router.push('/login'); return }
@@ -67,6 +69,7 @@ function BerichtContent() {
       const prof = data?.[0]
       if (!prof) { router.push('/login'); return }
       setProfile(prof)
+      setAvatarUrl(prof.avatar_url || null)
 
       const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
       setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
@@ -166,7 +169,7 @@ function BerichtContent() {
           <div className="flex gap-3 flex-wrap mb-3">
             <div className="flex flex-col gap-1 flex-1 min-w-48">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</label>
-              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50">{readonly && ownerName ? ownerName : profile.name}</div>
+              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50 flex items-center gap-2"><Avatar url={avatarUrl} name={readonly && ownerName ? ownerName : profile.name} size={28} />{readonly && ownerName ? ownerName : profile.name}</div>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Monat</label>
