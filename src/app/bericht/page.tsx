@@ -12,108 +12,25 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
   const year = new Date().getFullYear()
   const monthIdx = MONATE_IDX.indexOf(monatName)
   if (monthIdx === -1) return []
-
   const pad = (n: number) => String(n).padStart(2,'0')
   const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
   const lastDay = new Date(year, monthIdx + 1, 0).getDate()
-
   const firstOfMonth = new Date(year, monthIdx, 1)
-  const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1 // 0=Mo..6=So
-
-  // Mo/Di/Mi (dow 0,1,2) → go back to Monday of this week
-  // Do/Fr/Sa/So (dow 3,4,5,6) → first Monday is next week
+  const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1
+  // Mo/Di/Mi (0,1,2) = this week is week 1; Do/Fr/Sa/So (3,4,5,6) = skip to next Monday
   let monday: Date
   if (dow <= 2) {
     monday = new Date(year, monthIdx, 1 - dow)
   } else {
     monday = new Date(year, monthIdx, 1 + (7 - dow))
   }
-
   const weeks: {label: string, value: string}[] = []
   let weekNum = 1
-
   while (monday <= new Date(year, monthIdx, lastDay)) {
     const sunday = new Date(monday.getTime() + 6 * 86400000)
-    weeks.push({
-      label: `${fmt(monday)} – ${fmt(sunday)}`,
-      value: `Woche ${weekNum}`
-    })
+    weeks.push({ label: `${fmt(monday)} – ${fmt(sunday)}`, value: `Woche ${weekNum}` })
     weekNum++
     monday = new Date(monday.getTime() + 7 * 86400000)
-  }
-  return weeks
-}[] {
-  const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
-  const year = new Date().getFullYear()
-  const monthIdx = MONATE_IDX.indexOf(monatName)
-  if (monthIdx === -1) return []
-
-  const pad = (n: number) => String(n).padStart(2,'0')
-  const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
-  const lastDay = new Date(year, monthIdx + 1, 0).getDate()
-
-  const firstOfMonth = new Date(year, monthIdx, 1)
-  const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1
-  let monday = new Date(year, monthIdx, 1 - dow)
-
-  const weeks: {label: string, value: string}[] = []
-  let weekNum = 1
-
-  while (true) {
-    const sunday = new Date(monday.getTime() + 6 * 86400000)
-    const startIn = new Date(Math.max(monday.getTime(), new Date(year, monthIdx, 1).getTime()))
-    const endIn = new Date(Math.min(sunday.getTime(), new Date(year, monthIdx, lastDay).getTime()))
-    weeks.push({ label: `${fmt(startIn)} – ${fmt(endIn)}`, value: `Woche ${weekNum}` })
-    weekNum++
-    monday = new Date(monday.getTime() + 7 * 86400000)
-    if (monday.getMonth() !== monthIdx) break
-  }
-  return weeks
-}[] {
-  const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
-  const year = new Date().getFullYear()
-  const monthIdx = MONATE_IDX.indexOf(monatName)
-  if (monthIdx === -1) return []
-
-  const pad = (n: number) => String(n).padStart(2,'0')
-  const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
-  const lastDay = new Date(year, monthIdx + 1, 0).getDate()
-
-  // Find first Monday of or before the 1st of the month
-  const firstOfMonth = new Date(year, monthIdx, 1)
-  const dayOfWeek = firstOfMonth.getDay() // 0=So, 1=Mo, ..., 6=Sa
-  // Days since last Monday (Mo=0, Di=1, ... So=6)
-  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-  let monday = new Date(year, monthIdx, 1 - daysSinceMonday)
-
-  const weeks: {label: string, value: string}[] = []
-  let weekNum = 1
-
-  while (true) {
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-
-    // Week must overlap with this month
-    const weekStartInMonth = monday.getMonth() === monthIdx ? monday.getDate() : 1
-    const weekEndInMonth = sunday.getMonth() === monthIdx ? sunday.getDate() : lastDay
-
-    // Display dates clamped to month
-    const dispStart = new Date(year, monthIdx, weekStartInMonth)
-    const dispEnd = new Date(year, monthIdx, weekEndInMonth)
-
-    const label = `${fmt(dispStart)} – ${fmt(dispEnd)}`
-    const value = `Woche ${weekNum}`
-
-    weeks.push({ label, value })
-    weekNum++
-
-    // Move to next Monday
-    monday = new Date(monday)
-    monday.setDate(monday.getDate() + 7)
-
-    // Stop when next Monday is past end of month
-    if (monday.getMonth() !== monthIdx && monday > new Date(year, monthIdx, lastDay)) break
-    if (monday.getMonth() !== monthIdx) break
   }
   return weeks
 }
