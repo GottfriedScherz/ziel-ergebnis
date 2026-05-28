@@ -5,7 +5,7 @@ import { dbQuery, dbInsert, dbUpdate, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
 
-interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null }
+interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null; avatar_url?: string | null }
 interface FormZeile { id: string; name: string; reihenfolge: number; stufe_min: number; aktiv: boolean }
 
 export default function Admin() {
