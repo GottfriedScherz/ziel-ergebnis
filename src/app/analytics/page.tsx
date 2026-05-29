@@ -8,6 +8,18 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 const LINE_COLORS = ['#2a6fa8','#27500A','#d97706','#dc2626','#0891b2','#65a30d','#7c3aed','#db2777']
 
+const PRINT_STYLES = `
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  nav { display: none !important; }
+  .print-container { max-width: 100% !important; padding: 0 !important; }
+  .rounded-2xl { border-radius: 4px !important; }
+  .mb-5 { margin-bottom: 8px !important; }
+}
+`
+
 export default function Analytics() {
   const [profile, setProfile] = useState<any>(null)
   const [allUsers, setAllUsers] = useState<any[]>([])
@@ -113,7 +125,7 @@ export default function Analytics() {
 
   function renderLegendButtons(zeilen: string[], colors: string[]) {
     return (
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap no-print">
         {zeilen.map((z, i) => (
           <button key={z} onClick={() => toggleLine(z)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${hiddenLines[z] ? 'opacity-40 bg-gray-100 border-gray-200' : 'bg-white border-gray-300'}`}>
@@ -127,14 +139,19 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <style>{PRINT_STYLES}</style>
+      <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between no-print">
         <Link href="/dashboard" className="text-sm text-blue-600 font-medium">← Dashboard</Link>
         <h1 className="font-bold text-gray-800">📈 Analytics</h1>
-        <div className="w-20" />
+        <button onClick={() => window.print()}
+          className="text-gray-500 hover:text-gray-700 transition p-1.5 rounded-lg hover:bg-gray-100"
+          title="Drucken">
+          🖨️
+        </button>
       </nav>
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-5xl mx-auto px-4 py-6 print-container">
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-5 flex gap-3 flex-wrap items-end">
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-5 flex gap-3 flex-wrap items-end no-print">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Ansicht</label>
             <select value={selectedUser} onChange={e => { setSelectedUser(e.target.value); setInclSubtree(true) }}
