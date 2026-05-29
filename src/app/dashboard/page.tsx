@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dbQuery, dbDelete, getUser, getToken, logout } from '@/lib/supabase'
 import Link from 'next/link'
-import Avatar from '@/components/Avatar'
+
+function UserAvatar({ url, name, size = 40 }: { url?: string | null; name: string; size?: number }) {
+  const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+  if (url) return <img src={url} alt={name} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover'}} className="border-2 border-gray-200" />
+  return <div style={{width:size,height:size,borderRadius:'50%',fontSize:size*0.35}} className="bg-blue-100 text-blue-700 flex items-center justify-center font-semibold border-2 border-gray-200">{initials}</div>
+}
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
@@ -64,7 +69,10 @@ export default function Dashboard() {
           {profile.is_admin && <Link href="/admin" className="text-sm text-blue-600 font-medium">Admin</Link>}
           <Link href="/analytics" className="text-sm text-blue-600 font-medium">Analytics</Link>
           <Link href="/einstellungen" className="text-sm text-blue-600 font-medium">Einstellungen</Link>
-          <div className="flex items-center gap-2"><Avatar url={avatarUrl} name={profile.name} size={32} /><span className="text-sm text-gray-500">{profile.name}</span></div>
+          <div className="flex items-center gap-2">
+            <UserAvatar url={avatarUrl} name={profile.name} size={32} />
+            <span className="text-sm text-gray-500">{profile.name}</span>
+          </div>
           <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">Abmelden</button>
         </div>
       </nav>
@@ -84,14 +92,12 @@ export default function Dashboard() {
               {berichte.map(b => {
                 const label = `${b.monat} / ${b.woche} ${b.jahr}`
                 return (
-                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group">
+                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
                     <Link href={`/bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">{label}</span>
                       <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
                     </Link>
-                    <button
-                      onClick={() => handleDelete(b.id, label, false)}
-                      disabled={deletingId === b.id}
+                    <button onClick={() => handleDelete(b.id, label, false)} disabled={deletingId === b.id}
                       className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1"
                       title="Bericht löschen">
                       {deletingId === b.id ? '...' : '×'}
@@ -110,7 +116,7 @@ export default function Dashboard() {
               {teamBerichte.map(b => {
                 const label = `${b.profiles?.name} — ${b.monat} / ${b.woche} ${b.jahr}`
                 return (
-                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group">
+                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
                     <Link href={`/bericht?id=${b.id}&readonly=1`} className="flex-1 flex items-center justify-between">
                       <div>
                         <span className="text-sm font-medium text-gray-700">{b.profiles?.name}</span>
@@ -118,9 +124,7 @@ export default function Dashboard() {
                       </div>
                       <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
                     </Link>
-                    <button
-                      onClick={() => handleDelete(b.id, label, true)}
-                      disabled={deletingId === b.id}
+                    <button onClick={() => handleDelete(b.id, label, true)} disabled={deletingId === b.id}
                       className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1"
                       title="Bericht löschen">
                       {deletingId === b.id ? '...' : '×'}
