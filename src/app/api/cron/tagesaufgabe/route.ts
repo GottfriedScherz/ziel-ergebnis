@@ -29,10 +29,10 @@ async function sendEmails() {
       body: JSON.stringify({
         from: 'Deine heutigen TOP 3 <noreply@finanziellfrei.at>',
         to: user.email,
-        subject: `☀️ Guten Morgen ${user.name} – Was sind heute Deine 3 wichtigsten Aufgaben?`,
+        subject: `☀️ Guten Morgen ${user.name.split(' ')[0]} – Was sind heute Deine 3 wichtigsten Aufgaben?`,
         html: `
           <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
-            <h2 style="color: #1a1a1a;">Guten Morgen, ${user.name}! ☀️</h2>
+            <h2 style="color: #1a1a1a;">Guten Morgen, ${user.name.split(' ')[0]}! ☀️</h2>
             <p style="color: #444; font-size: 16px; line-height: 1.6; font-weight: 500;">
               Was sind heute Deine 3 wichtigsten Aufgaben um Deine langfristigen Ziele zu erreichen?
             </p>
