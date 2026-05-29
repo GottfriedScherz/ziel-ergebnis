@@ -49,18 +49,19 @@ const PRINT_STYLES = `
   .print-container { max-width: 100% !important; padding: 0 !important; }
   nav { display: none !important; }
   .overflow-auto { overflow: visible !important; max-height: none !important; }
-  table { width: 100% !important; font-size: 7px !important; table-layout: fixed !important; }
-  th, td { padding: 1px 2px !important; }
-  th { font-size: 6.5px !important; }
-  input { border: none !important; background: transparent !important; font-size: 7px !important; padding: 1px !important; }
-  .rounded-2xl { border-radius: 4px !important; }
+  table { width: 100% !important; font-size: 8px !important; table-layout: fixed !important; border-collapse: collapse !important; }
+  thead th { position: static !important; }
+  th { font-size: 7px !important; padding: 2px 1px !important; }
+  td { padding: 1px !important; }
+  input { border: none !important; background: transparent !important; font-size: 9px !important; padding: 2px 0 !important; width: 100% !important; text-align: center !important; }
+  .rounded-2xl { border-radius: 3px !important; }
   .mb-4 { margin-bottom: 3px !important; }
   .p-4 { padding: 4px !important; }
   .p-3 { padding: 3px !important; }
-  textarea { border: none !important; resize: none !important; font-size: 7px !important; }
+  textarea { border: none !important; resize: none !important; font-size: 8px !important; }
   .grid { gap: 3px !important; }
   .text-base { font-size: 10px !important; }
-  img { width: 40px !important; height: 40px !important; }
+  img { width: 36px !important; height: 36px !important; }
 }
 `
 
