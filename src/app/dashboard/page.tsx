@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { dbQuery, getUser, getToken, logout } from '@/lib/supabase'
+import { dbQuery, dbDelete, getUser, getToken, logout } from '@/lib/supabase'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
 
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [berichte, setBerichte] = useState<any[]>([])
   const [teamBerichte, setTeamBerichte] = useState<any[]>([])
   const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
+  const [deletingId, setDeletingId] = useState<string|null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -40,6 +41,19 @@ export default function Dashboard() {
 
   function handleLogout() { logout(); router.push('/login') }
 
+  async function handleDelete(id: string, label: string, isTeam = false) {
+    if (!confirm(`Bericht "${label}" wirklich löschen?`)) return
+    setDeletingId(id)
+    await dbDelete('eintraege', `bericht_id=eq.${id}`)
+    await dbDelete('berichte', `id=eq.${id}`)
+    setDeletingId(null)
+    if (isTeam) {
+      setTeamBerichte(prev => prev.filter(b => b.id !== id))
+    } else {
+      setBerichte(prev => prev.filter(b => b.id !== id))
+    }
+  }
+
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
 
   return (
@@ -62,32 +76,58 @@ export default function Dashboard() {
           </div>
           <Link href="/bericht" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">+ Neuer Wochenbericht</Link>
         </div>
+
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
           <h3 className="font-semibold text-gray-700 mb-3">Meine Berichte</h3>
           {berichte.length === 0 ? <p className="text-gray-400 text-sm">Noch keine Berichte vorhanden.</p> : (
             <div className="space-y-2">
-              {berichte.map(b => (
-                <Link key={b.id} href={`/bericht?id=${b.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-gray-100 transition">
-                  <span className="text-sm font-medium text-gray-700">{b.monat} / {b.woche} {b.jahr}</span>
-                  <span className="text-xs text-gray-400">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
-                </Link>
-              ))}
+              {berichte.map(b => {
+                const label = `${b.monat} / ${b.woche} ${b.jahr}`
+                return (
+                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group">
+                    <Link href={`/bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">{label}</span>
+                      <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(b.id, label, false)}
+                      disabled={deletingId === b.id}
+                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1"
+                      title="Bericht löschen">
+                      {deletingId === b.id ? '...' : '×'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
+
         {teamBerichte.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-700 mb-3">Team-Berichte</h3>
             <div className="space-y-2">
-              {teamBerichte.map(b => (
-                <Link key={b.id} href={`/bericht?id=${b.id}&readonly=1`} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-gray-100 transition">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">{b.profiles?.name}</span>
-                    <span className="text-xs text-gray-400 ml-2">{b.monat} / {b.woche} {b.jahr}</span>
+              {teamBerichte.map(b => {
+                const label = `${b.profiles?.name} — ${b.monat} / ${b.woche} ${b.jahr}`
+                return (
+                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group">
+                    <Link href={`/bericht?id=${b.id}&readonly=1`} className="flex-1 flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">{b.profiles?.name}</span>
+                        <span className="text-xs text-gray-400 ml-2">{b.monat} / {b.woche} {b.jahr}</span>
+                      </div>
+                      <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(b.id, label, true)}
+                      disabled={deletingId === b.id}
+                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1"
+                      title="Bericht löschen">
+                      {deletingId === b.id ? '...' : '×'}
+                    </button>
                   </div>
-                  <span className="text-xs text-gray-400">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
-                </Link>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
