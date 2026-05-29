@@ -1,145 +1,294 @@
 'use client'
-import { useState, useRef, useCallback } from 'react'
-import Cropper from 'react-easy-crop'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { dbQuery, dbInsert, dbUpdate, dbDelete, getToken, getUser } from '@/lib/supabase'
+import Link from 'next/link'
+import Avatar from '@/components/Avatar'
+import { Suspense } from 'react'
 
-interface AvatarProps {
-  url?: string | null
-  name: string
-  size?: number
-  editable?: boolean
-  userId?: string
-  onUpdate?: (url: string) => void
+const DAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']
+
+function getWeekOptions(monatName: string): {label: string, value: string}[] {
+  const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+  const year = new Date().getFullYear()
+  const monthIdx = MONATE_IDX.indexOf(monatName)
+  if (monthIdx === -1) return []
+  const pad = (n: number) => String(n).padStart(2,'0')
+  const fmt = (d: Date) => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`
+  const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+  const firstOfMonth = new Date(year, monthIdx, 1)
+  const dow = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1
+  let monday: Date
+  if (dow <= 2) {
+    monday = new Date(year, monthIdx, 1 - dow)
+  } else {
+    monday = new Date(year, monthIdx, 1 + (7 - dow))
+  }
+  const weeks: {label: string, value: string}[] = []
+  let weekNum = 1
+  while (monday <= new Date(year, monthIdx, lastDay)) {
+    const sunday = new Date(monday.getTime() + 6 * 86400000)
+    weeks.push({ label: `${fmt(monday)} – ${fmt(sunday)}`, value: `Woche ${weekNum}` })
+    weekNum++
+    monday = new Date(monday.getTime() + 7 * 86400000)
+  }
+  return weeks
 }
+const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 
-async function getCroppedImg(imageSrc: string, croppedAreaPixels: any): Promise<Blob> {
-  const image = await new Promise<HTMLImageElement>((res, rej) => {
-    const img = new Image()
-    img.onload = () => res(img)
-    img.onerror = rej
-    img.src = imageSrc
-  })
-  const canvas = document.createElement('canvas')
-  const size = Math.min(croppedAreaPixels.width, croppedAreaPixels.height)
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')!
-  ctx.beginPath()
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-  ctx.clip()
-  ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, size, size)
-  return new Promise(res => canvas.toBlob(blob => res(blob!), 'image/jpeg', 0.9))
+const PRINT_STYLES = `
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  .print-container { max-width: 100% !important; padding: 0 !important; }
+  nav { display: none !important; }
+  .overflow-auto { overflow: visible !important; max-height: none !important; }
+  table { width: 100% !important; font-size: 8px !important; }
+  th, td { padding: 2px 3px !important; }
+  input { border: none !important; background: transparent !important; }
+  .rounded-2xl { border-radius: 4px !important; }
+  .mb-4 { margin-bottom: 4px !important; }
+  textarea { border: none !important; resize: none !important; }
 }
+`
 
-export default function Avatar({ url, name, size = 40, editable = false, userId, onUpdate }: AvatarProps) {
-  const [uploading, setUploading] = useState(false)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [cropSrc, setCropSrc] = useState<string | null>(null)
-  const [crop, setCrop] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+function BerichtContent() {
+  const router = useRouter()
+  const params = useSearchParams()
+  const berichtId = params.get('id')
+  const readonly = params.get('readonly') === '1'
 
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  const displayUrl = preview || url
+  const [profile, setProfile] = useState<any>(null)
+  const [zeilen, setZeilen] = useState<any[]>([])
+  const [monat, setMonat] = useState(MONATE[new Date().getMonth()])
+  const [woche, setWoche] = useState('Woche 1')
+  const [cells, setCells] = useState<any>({})
+  const [freitext, setFreitext] = useState('')
+  const [eeJahrZiel, setEeJahrZiel] = useState('')
+  const [eeJahrStand, setEeJahrStand] = useState('')
+  const [eeMonatZiel, setEeMonatZiel] = useState('')
+  const [eeMonatStand, setEeMonatStand] = useState('')
+  const [vipJahrZiel, setVipJahrZiel] = useState('')
+  const [vipJahrStand, setVipJahrStand] = useState('')
+  const [vipMonatZiel, setVipMonatZiel] = useState('')
+  const [vipMonatStand, setVipMonatStand] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerAvatarUrl, setOwnerAvatarUrl] = useState<string|null>(null)
+  const [myAvatarUrl, setMyAvatarUrl] = useState<string|null>(null)
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setCropSrc(ev.target?.result as string)
-    reader.readAsDataURL(file)
-    // Reset input so same file can be selected again
-    e.target.value = ''
+  useEffect(() => {
+    if (!getToken()) { router.push('/login'); return }
+    const user = getUser()
+    dbQuery('profiles', `id=eq.${user.id}&select=*`).then(async data => {
+      const prof = data?.[0]
+      if (!prof) { router.push('/login'); return }
+      setProfile(prof)
+      setMyAvatarUrl(prof.avatar_url || null)
+
+      const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
+      setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
+
+      if (berichtId) {
+        const b = await dbQuery('berichte', `id=eq.${berichtId}&select=*,profiles(name,avatar_url)`)
+        if (b?.[0]) {
+          const bericht = b[0]
+          setMonat(bericht.monat); setWoche(bericht.woche)
+          setFreitext(bericht.freitext || '')
+          setEeJahrZiel(bericht.ee_jahr_ziel ?? ''); setEeJahrStand(bericht.ee_jahr_stand ?? '')
+          setEeMonatZiel(bericht.ee_monat_ziel ?? ''); setEeMonatStand(bericht.ee_monat_stand ?? '')
+          setVipJahrZiel(bericht.vip_jahr_ziel ?? ''); setVipJahrStand(bericht.vip_jahr_stand ?? '')
+          setVipMonatZiel(bericht.vip_monat_ziel ?? ''); setVipMonatStand(bericht.vip_monat_stand ?? '')
+          setOwnerName(bericht.profiles?.name || '')
+          setOwnerAvatarUrl(bericht.profiles?.avatar_url || null)
+          const eintr = await dbQuery('eintraege', `bericht_id=eq.${berichtId}&select=*`)
+          const c: any = {}
+          ;(eintr || []).forEach((e: any) => {
+            c[`${e.zeile}__${e.tag}__v`] = e.vereinbart
+            c[`${e.zeile}__${e.tag}__s`] = e.stattgefunden
+          })
+          setCells(c)
+        }
+      }
+    })
+  }, [berichtId, router])
+
+  function getCell(zeile: string, tag: string, type: 'v'|'s') { return cells[`${zeile}__${tag}__${type}`] ?? '' }
+  function setCell(zeile: string, tag: string, type: 'v'|'s', val: string) {
+    setCells((prev: any) => ({ ...prev, [`${zeile}__${tag}__${type}`]: val === '' ? '' : parseInt(val) || 0 }))
   }
 
-  const onCropComplete = useCallback((_: any, croppedPixels: any) => {
-    setCroppedAreaPixels(croppedPixels)
-  }, [])
-
-  async function handleCropConfirm() {
-    if (!cropSrc || !croppedAreaPixels || !userId) return
-    setUploading(true)
-    setCropSrc(null)
-    try {
-      const blob = await getCroppedImg(cropSrc, croppedAreaPixels)
-      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
-      setPreview(URL.createObjectURL(blob))
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('userId', userId)
-      const res = await fetch('/api/upload-avatar', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (data.avatarUrl && onUpdate) onUpdate(data.avatarUrl)
-    } catch (err) {
-      console.error('Crop/upload error:', err)
+  async function handleSave() {
+    if (!profile || readonly) return
+    setSaving(true)
+    const jahr = new Date().getFullYear()
+    const berichtData = {
+      user_id: profile.id, monat, woche, jahr, freitext,
+      ee_jahr_ziel: eeJahrZiel ? parseInt(eeJahrZiel) : null,
+      ee_jahr_stand: eeJahrStand ? parseInt(eeJahrStand) : null,
+      ee_monat_ziel: eeMonatZiel ? parseInt(eeMonatZiel) : null,
+      ee_monat_stand: eeMonatStand ? parseInt(eeMonatStand) : null,
+      vip_jahr_ziel: vipJahrZiel ? parseInt(vipJahrZiel) : null,
+      vip_jahr_stand: vipJahrStand ? parseInt(vipJahrStand) : null,
+      vip_monat_ziel: vipMonatZiel ? parseInt(vipMonatZiel) : null,
+      vip_monat_stand: vipMonatStand ? parseInt(vipMonatStand) : null,
+      updated_at: new Date().toISOString()
     }
-    setUploading(false)
+
+    let bid = berichtId
+    if (bid) {
+      await dbUpdate('berichte', `id=eq.${bid}`, berichtData)
+    } else {
+      const existing = await dbQuery('berichte', `user_id=eq.${profile.id}&monat=eq.${monat}&woche=eq.${woche}&jahr=eq.${jahr}`)
+      if (existing?.[0]) {
+        bid = existing[0].id
+        await dbUpdate('berichte', `id=eq.${bid}`, berichtData)
+      } else {
+        const res = await dbInsert('berichte', berichtData)
+        bid = res?.[0]?.id
+      }
+    }
+
+    if (bid) {
+      await dbDelete('eintraege', `bericht_id=eq.${bid}`)
+      const rows: any[] = []
+      zeilen.forEach(z => {
+        DAYS.forEach(tag => {
+          const v = getCell(z.name, tag, 'v')
+          const s = getCell(z.name, tag, 's')
+          if (v !== '' || s !== '') rows.push({ bericht_id: bid, zeile: z.name, tag, vereinbart: v || 0, stattgefunden: s || 0 })
+        })
+      })
+      if (rows.length > 0) await dbInsert('eintraege', rows)
+    }
+    setSaving(false); setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
   }
+
+  if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
+  const isG = (i: number) => i % 2 === 0
+
+  const displayName = readonly && ownerName ? ownerName : profile.name
+  const displayAvatar = readonly && ownerName ? ownerAvatarUrl : myAvatarUrl
 
   return (
-    <>
-      <div className="relative" style={{ width: size, height: size }}>
-        {displayUrl ? (
-          <img src={displayUrl} alt={name}
-            style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }}
-            className="border-2 border-gray-200" />
-        ) : (
-          <div style={{ width: size, height: size, borderRadius: '50%', fontSize: size * 0.35 }}
-            className="bg-blue-100 text-blue-700 flex items-center justify-center font-semibold border-2 border-gray-200">
-            {initials}
+    <div className="min-h-screen bg-gray-50">
+      <style>{PRINT_STYLES}</style>
+      <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between no-print">
+        <Link href="/dashboard" className="text-sm text-blue-600 font-medium">← Dashboard</Link>
+        <h1 className="font-bold text-gray-800">📊 Ziel & Ergebnis</h1>
+        <button onClick={() => window.print()}
+          className="text-gray-500 hover:text-gray-700 transition p-1.5 rounded-lg hover:bg-gray-100"
+          title="Drucken">
+          🖨️
+        </button>
+      </nav>
+      <div className="max-w-5xl mx-auto px-4 py-5 print-container">
+        {readonly && ownerName && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 mb-4 text-sm text-blue-700 no-print">
+            Bericht von <strong>{ownerName}</strong> — Nur-Lesen-Ansicht
           </div>
         )}
-        {editable && (
-          <>
-            <button onClick={() => inputRef.current?.click()}
-              style={{ width: Math.max(22, size * 0.38), height: Math.max(22, size * 0.38), bottom: -2, right: -2 }}
-              className="absolute bg-blue-600 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-700 transition border-2 border-white"
-              title="Foto ändern">
-              {uploading ? '⏳' : '📷'}
-            </button>
-            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          </>
-        )}
-      </div>
-
-      {/* Crop Modal */}
-      {cropSrc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-          <div className="bg-white rounded-2xl overflow-hidden shadow-2xl" style={{width: 360, maxWidth: '95vw'}}>
-            <div className="relative bg-black" style={{height: 320}}>
-              <Cropper
-                image={cropSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                cropShape="round"
-                showGrid={false}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-              />
-            </div>
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs text-gray-500">Zoom</span>
-                <input type="range" min={1} max={3} step={0.01} value={zoom}
-                  onChange={e => setZoom(Number(e.target.value))}
-                  className="flex-1 accent-blue-600" />
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setCropSrc(null)}
-                  className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
-                  Abbrechen
-                </button>
-                <button onClick={handleCropConfirm}
-                  className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition">
-                  Übernehmen
-                </button>
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4">
+          <div className="flex gap-3 flex-wrap mb-3">
+            <div className="flex flex-col gap-1 flex-1 min-w-48">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</label>
+              <div className="border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 bg-gray-50 flex items-center gap-4">
+                <Avatar url={displayAvatar} name={displayName} size={84} />
+                <span className="font-semibold text-base text-gray-800">{displayName}</span>
               </div>
             </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Monat</label>
+              <select value={monat} onChange={e => setMonat(e.target.value)} disabled={readonly}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {MONATE.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Woche</label>
+              <select value={woche} onChange={e => setWoche(e.target.value)} disabled={readonly}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {getWeekOptions(monat).map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[['Eigen-Einheiten eingereicht', eeJahrZiel, setEeJahrZiel, eeJahrStand, setEeJahrStand, eeMonatZiel, setEeMonatZiel, eeMonatStand, setEeMonatStand],
+              ['VIP & more – Teilnehmer', vipJahrZiel, setVipJahrZiel, vipJahrStand, setVipJahrStand, vipMonatZiel, setVipMonatZiel, vipMonatStand, setVipMonatStand]
+            ].map(([label, jz, sjz, js, sjs, mz, smz, ms, sms]: any) => (
+              <div key={label} className="bg-gray-50 rounded-xl p-3">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{label}</div>
+                <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                  <span className="text-gray-500 font-semibold">Jahr</span>
+                  <input type="number" placeholder="Ziel" value={jz} onChange={(e: any) => sjz(e.target.value)} disabled={readonly}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center bg-white focus:outline-none" />
+                  <input type="number" placeholder="Stand" value={js} onChange={(e: any) => sjs(e.target.value)} disabled={readonly}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center bg-white focus:outline-none" />
+                  <span className="text-gray-500 font-semibold">Monat</span>
+                  <input type="number" placeholder="Ziel" value={mz} onChange={(e: any) => smz(e.target.value)} disabled={readonly}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center bg-white focus:outline-none" />
+                  <input type="number" placeholder="Stand" value={ms} onChange={(e: any) => sms(e.target.value)} disabled={readonly}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center bg-white focus:outline-none" />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
-    </>
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
+          <div className="overflow-auto max-h-[520px]">
+            <table className="border-collapse" style={{tableLayout:'fixed'}}>
+              <thead>
+                <tr>
+                  <th className="sticky left-0 top-0 z-50 bg-gray-100 text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b border-r border-gray-200" style={{width:155,minWidth:155}}>Aktivität</th>
+                  {DAYS.map((d,i) => (
+                    <th key={d} colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200" style={{width:108,background:isG(i)?'#c8e0aa':'#aacde8',color:isG(i)?'#27500A':'#0C447C'}}>{d}</th>
+                  ))}
+                </tr>
+                <tr>
+                  <th className="sticky left-0 top-[37px] z-50 bg-gray-100 border-b border-r border-gray-200" style={{width:155,minWidth:155}} />
+                  {DAYS.map((d,i) => ['Vereinbart','Stattgef.'].map((lbl,j) => (
+                    <th key={`${d}-${j}`} className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200" style={{width:54,minWidth:54,background:isG(i)?(j===0?'#d8edbe':'#eaf3de'):(j===0?'#c5def2':'#ddeef9'),color:isG(i)?'#27500A':'#0C447C'}}>{lbl}</th>
+                  )))}
+                </tr>
+              </thead>
+              <tbody>
+                {zeilen.map((z, ri) => (
+                  <tr key={z.id}>
+                    <td className="sticky left-0 z-20 px-3 py-1.5 text-xs font-medium text-gray-700 border-b border-r border-gray-200" style={{background:ri%2===0?'#fff':'#f9f8f5',minWidth:155,maxWidth:155}}>{z.name}</td>
+                    {DAYS.map((tag,di) => (['v','s'] as const).map((type,j) => (
+                      <td key={`${tag}-${type}`} className="border-b border-gray-100 p-0.5" style={{width:54,background:isG(di)?(type==='v'?'#d8edbe':'#eaf3de'):(type==='v'?'#c5def2':'#ddeef9')}}>
+                        <input type="number" min="0" placeholder="–" disabled={readonly}
+                          value={getCell(z.name, tag, type)}
+                          onChange={e => setCell(z.name, tag, type, e.target.value)}
+                          className="w-full text-center text-sm py-1.5 bg-transparent border-none outline-none focus:bg-blue-50 focus:rounded disabled:opacity-60" />
+                      </td>
+                    )))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4">
+          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide block mb-2">Weitere Vertriebsaktivitäten</label>
+          <textarea value={freitext} onChange={e => setFreitext(e.target.value)} disabled={readonly} rows={3}
+            placeholder="Freitext für die gesamte Woche..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60" />
+        </div>
+        {!readonly && (
+          <button onClick={handleSave} disabled={saving}
+            className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition no-print">
+            {saving ? 'Speichern...' : saved ? '✓ Gespeichert' : '💾 Speichern'}
+          </button>
+        )}
+      </div>
+    </div>
   )
+}
+
+export default function BerichtPage() {
+  return <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>}><BerichtContent /></Suspense>
 }
