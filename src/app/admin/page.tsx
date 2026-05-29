@@ -85,6 +85,14 @@ export default function Admin() {
     setZeilen(prev => prev.map(z => z.id === id ? { ...z, [field]: value } : z))
   }
 
+  async function deleteZeile(id: string, name: string) {
+    if (!confirm(`Zeile "${name}" wirklich löschen?`)) return
+    await adminApi('/api/admin-zeile', { action: 'delete_zeile', id })
+    setZeilen(prev => prev.filter(z => z.id !== id))
+    setZeilenEdits(prev => { const e = {...prev}; delete e[id]; return e })
+    showMsg('Zeile gelöscht ✓', 'ok')
+  }
+
   async function saveZeilen() {
     setSavingZeilen(true)
     for (const z of zeilen) {
@@ -218,6 +226,7 @@ export default function Admin() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Zeile</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sichtbar ab</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Aktiv</th>
+                  <th className="px-4 py-3" />
                 </tr></thead>
                 <tbody>
                   {zeilen.map(z => (
@@ -237,6 +246,12 @@ export default function Admin() {
                       </td>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={z.aktiv} onChange={e => updateZeileProp(z.id, 'aktiv', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => deleteZeile(z.id, z.name)}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium">
+                          Löschen
+                        </button>
                       </td>
                     </tr>
                   ))}
