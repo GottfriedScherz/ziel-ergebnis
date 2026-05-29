@@ -125,20 +125,6 @@ export default function Analytics() {
     )
   }
 
-  const eeLines = [
-    { key: 'EE Stand', color: '#27500A' },
-    { key: 'VIP Stand', color: '#0C447C' },
-  ]
-
-  const eeData = filteredBerichte.map(b => {
-    const user = allUsers.find((u: any) => u.id === b.user_id)
-    return {
-      name: `${b.monat.slice(0,3)} W${b.woche.replace('Woche ', '')}${selectedUser === 'all' ? ` (${user?.name?.split(' ')[0] || ''})` : ''}`,
-      'EE Stand': b.ee_monat_stand || 0,
-      'VIP Stand': b.vip_monat_stand || 0,
-    }
-  })
-
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -210,7 +196,7 @@ export default function Analytics() {
         </div>
 
         {einheitenZeile && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
               <h3 className="font-semibold text-gray-700">Einheiten-Entwicklung</h3>
               {renderLegendButtons([einheitenZeile], ['#7c3aed'])}
@@ -228,26 +214,6 @@ export default function Analytics() {
             )}
           </div>
         )}
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
-            <h3 className="font-semibold text-gray-700">Eigen-Einheiten & VIP — Stand</h3>
-            {renderLegendButtons(eeLines.map(l => l.key), eeLines.map(l => l.color))}
-          </div>
-          {eeData.length === 0 ? <p className="text-gray-400 text-sm">Noch keine Daten vorhanden.</p> : (
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={eeData}>
-                <XAxis dataKey="name" tick={{fontSize:10}} />
-                <YAxis tick={{fontSize:11}} />
-                <Tooltip />
-                {eeLines.map(l => (
-                  <Line key={l.key} type="monotone" dataKey={l.key}
-                    stroke={l.color} strokeWidth={2} dot hide={!!hiddenLines[l.key]} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
 
       </div>
     </div>
