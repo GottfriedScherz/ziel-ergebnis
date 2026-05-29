@@ -88,7 +88,6 @@ export default function Analytics() {
       ? `user_id=eq.${userIds[0]}`
       : `user_id=in.(${userIds.join(',')})`
     const b = await dbQuery('berichte', `${idFilter}&select=*&order=jahr,monat,woche`) || []
-    // Sort correctly by jahr, monat index, woche number
     b.sort((a: any, b: any) => {
       const aVal = parseInt(a.jahr) * 1000 + monatIndex(a.monat) * 10 + parseInt(a.woche.replace('Woche ', ''))
       const bVal = parseInt(b.jahr) * 1000 + monatIndex(b.monat) * 10 + parseInt(b.woche.replace('Woche ', ''))
@@ -117,12 +116,11 @@ export default function Analytics() {
     return bVal >= vonVal && bVal <= bisVal
   })
 
-  // Determine max karrierestufe of selected users
   function getMaxStufe(): number {
     if (selectedUser === 'all') {
       return Math.max(...visibleUsers.map((u: any) => u.karrierestufe || 1), 1)
     }
-    let userIds = inclSubtree
+    const userIds = inclSubtree
       ? [selectedUser, ...getSubtreeIds(selectedUser, allUsers)]
       : [selectedUser]
     return Math.max(...userIds.map(id => {
@@ -162,16 +160,17 @@ export default function Analytics() {
 
   function renderLegendButtons(zeilen: string[], colors: string[]) {
     return (
-      <div className="grid grid-cols-4 gap-3 mb-5 md:grid-cols-6 lg:grid-cols-8 flex-wrap">
-  {relevanteZeilen.map(({ name }, i) => (
-    <div key={name} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-      <div className="text-2xl font-bold" style={{color: LINE_COLORS[i % LINE_COLORS.length]}}>
-        {total(name)}
+      <div className="flex gap-2 flex-wrap no-print">
+        {zeilen.map((z, i) => (
+          <button key={z} onClick={() => toggleLine(z)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${hiddenLines[z] ? 'opacity-40 bg-gray-100 border-gray-200' : 'bg-white border-gray-300'}`}>
+            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{backgroundColor: colors[i % colors.length]}} />
+            {z}
+          </button>
+        ))}
       </div>
-      <div className="text-xs text-gray-500 mt-0.5 leading-tight">{name}</div>
-    </div>
-  ))}
-</div>
+    )
+  }
 
   const printLabel = `${selectedUser === 'all' ? 'Gesamte Struktur' : visibleUsers.find((u: any) => u.id === selectedUser)?.name || ''}${inclSubtree && selectedUser !== 'all' ? ' inkl. Unterstruktur' : ''} — ${vonMonat} ${vonJahr} bis ${bisMonat} ${bisJahr}`
 
@@ -241,13 +240,13 @@ export default function Analytics() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-5">
-          {relevanteZeilen.slice(0, 3).map(({ name }, i) => (
-            <div key={name} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-              <div className={`text-3xl font-bold ${i === 0 ? 'text-blue-600' : i === 1 ? 'text-green-600' : 'text-purple-600'}`}>
+        <div className="grid grid-cols-4 gap-3 mb-5 lg:grid-cols-5">
+          {relevanteZeilen.map(({ name }, i) => (
+            <div key={name} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+              <div className="text-2xl font-bold" style={{color: LINE_COLORS[i % LINE_COLORS.length]}}>
                 {total(name)}
               </div>
-              <div className="text-xs text-gray-500 mt-1">{name} gesamt</div>
+              <div className="text-xs text-gray-500 mt-0.5 leading-tight">{name}</div>
             </div>
           ))}
         </div>
