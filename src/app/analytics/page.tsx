@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 const LINE_COLORS = ['#2a6fa8','#27500A','#d97706','#dc2626','#0891b2','#65a30d','#7c3aed','#db2777']
+const JAHRE = [2024, 2025, 2026, 2027, 2028]
 
 const PRINT_STYLES = `
 @media print {
@@ -20,6 +21,8 @@ const PRINT_STYLES = `
 }
 `
 
+function monatIndex(monat: string) { return MONATE.indexOf(monat) }
+
 export default function Analytics() {
   const [profile, setProfile] = useState<any>(null)
   const [allUsers, setAllUsers] = useState<any[]>([])
@@ -28,7 +31,10 @@ export default function Analytics() {
   const [inclSubtree, setInclSubtree] = useState(true)
   const [berichte, setBerichte] = useState<any[]>([])
   const [eintraege, setEintraege] = useState<any[]>([])
-  const [filterMonat, setFilterMonat] = useState('alle')
+  const [vonMonat, setVonMonat] = useState('Jänner')
+  const [vonJahr, setVonJahr] = useState(new Date().getFullYear())
+  const [bisMonat, setBisMonat] = useState(MONATE[new Date().getMonth()])
+  const [bisJahr, setBisJahr] = useState(new Date().getFullYear())
   const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({})
   const [formularZeilen, setFormularZeilen] = useState<string[]>([])
   const router = useRouter()
@@ -91,11 +97,21 @@ export default function Analytics() {
     }
   }
 
-  useEffect(() => { if (profile && visibleUsers.length > 0) loadData() }, [filterMonat])
+  useEffect(() => { if (profile && visibleUsers.length > 0) loadData() }, [vonMonat, vonJahr, bisMonat, bisJahr])
 
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
 
-  const filteredBerichte = berichte.filter(b => filterMonat === 'alle' || b.monat === filterMonat)
+  const filteredBerichte = berichte.filter(b => {
+    const bJahr = parseInt(b.jahr)
+    const bMonatIdx = monatIndex(b.monat)
+    const vonIdx = monatIndex(vonMonat)
+    const bisIdx = monatIndex(bisMonat)
+    const vonVal = vonJahr * 12 + vonIdx
+    const bisVal = bisJahr * 12 + bisIdx
+    const bVal = bJahr * 12 + bMonatIdx
+    return bVal >= vonVal && bVal <= bisVal
+  })
+
   const aktivitaetenZeilen = formularZeilen.filter(z => z !== 'Einheiten')
   const einheitenZeile = formularZeilen.includes('Einheiten') ? 'Einheiten' : null
 
@@ -113,7 +129,7 @@ export default function Analytics() {
   const einheitenData = einheitenZeile ? buildChartData([einheitenZeile]) : []
 
   const total = (zeile: string) => eintraege
-    .filter(e => filterMonat === 'alle' || berichte.find(b => b.id === e.bericht_id && b.monat === filterMonat))
+    .filter(e => filteredBerichte.find(b => b.id === e.bericht_id))
     .filter(e => e.zeile === zeile)
     .reduce((s, e: any) => s + (e.stattgefunden || 0), 0)
 
@@ -137,12 +153,14 @@ export default function Analytics() {
     )
   }
 
+  const printLabel = `${selectedUser === 'all' ? 'Gesamte Struktur' : visibleUsers.find((u: any) => u.id === selectedUser)?.name || ''}${inclSubtree && selectedUser !== 'all' ? ' inkl. Unterstruktur' : ''} — ${vonMonat} ${vonJahr} bis ${bisMonat} ${bisJahr}`
+
   return (
     <div className="min-h-screen bg-gray-50">
       <style>{PRINT_STYLES}</style>
       <div className="hidden print:block mb-4 text-sm text-gray-600 font-medium">
-  📈 Analytics — {selectedUser === 'all' ? 'Gesamte Struktur' : visibleUsers.find((u: any) => u.id === selectedUser)?.name || ''}{inclSubtree && selectedUser !== 'all' ? ' inkl. Unterstruktur' : ''} — {filterMonat === 'alle' ? 'Alle Monate' : filterMonat}
-</div>
+        📈 Analytics — {printLabel}
+      </div>
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between no-print">
         <Link href="/dashboard" className="text-sm text-blue-600 font-medium">← Dashboard</Link>
         <h1 className="font-bold text-gray-800">📈 Analytics</h1>
@@ -176,12 +194,30 @@ export default function Analytics() {
             </div>
           )}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Monat</label>
-            <select value={filterMonat} onChange={e => setFilterMonat(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="alle">Alle Monate</option>
-              {MONATE.map(m => <option key={m}>{m}</option>)}
-            </select>
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Von</label>
+            <div className="flex gap-1">
+              <select value={vonMonat} onChange={e => setVonMonat(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {MONATE.map(m => <option key={m}>{m}</option>)}
+              </select>
+              <select value={vonJahr} onChange={e => setVonJahr(parseInt(e.target.value))}
+                className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {JAHRE.map(j => <option key={j}>{j}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Bis</label>
+            <div className="flex gap-1">
+              <select value={bisMonat} onChange={e => setBisMonat(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {MONATE.map(m => <option key={m}>{m}</option>)}
+              </select>
+              <select value={bisJahr} onChange={e => setBisJahr(parseInt(e.target.value))}
+                className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {JAHRE.map(j => <option key={j}>{j}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
