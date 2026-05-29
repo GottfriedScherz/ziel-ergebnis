@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
+async function sendEmails() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY!
   const RESEND_KEY = process.env.RESEND_API_KEY!
@@ -53,6 +53,15 @@ export async function POST(req: NextRequest) {
     })
     sent++
   }
+  return { success: true, sent }
+}
 
-  return NextResponse.json({ success: true, sent })
+export async function POST(req: NextRequest) {
+  const result = await sendEmails()
+  return NextResponse.json(result)
+}
+
+export async function GET(req: NextRequest) {
+  const result = await sendEmails()
+  return NextResponse.json(result)
 }
