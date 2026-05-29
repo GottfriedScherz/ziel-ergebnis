@@ -26,7 +26,7 @@ function getAktuelleWoche(): { monat: string, woche: string, jahr: number } {
   return { monat, woche: `Woche ${weekNum}`, jahr }
 }
 
-export async function POST(req: NextRequest) {
+async function sendReminders() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY!
   const RESEND_KEY = process.env.RESEND_API_KEY!
@@ -40,11 +40,9 @@ export async function POST(req: NextRequest) {
 
   const { monat, woche, jahr } = getAktuelleWoche()
 
-  // Alle aktiven User laden
   const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id,name,email`, { headers })
   const users = await usersRes.json()
 
-  // Berichte dieser Woche laden
   const berichteRes = await fetch(
     `${SUPABASE_URL}/rest/v1/berichte?monat=eq.${encodeURIComponent(monat)}&woche=eq.${encodeURIComponent(woche)}&jahr=eq.${jahr}&select=user_id`,
     { headers }
@@ -52,7 +50,6 @@ export async function POST(req: NextRequest) {
   const berichte = await berichteRes.json()
   const erledigt = new Set(berichte.map((b: any) => b.user_id))
 
-  // Nur User ohne Bericht
   const pending = users.filter((u: any) => !erledigt.has(u.id) && u.email)
 
   let sent = 0
@@ -89,5 +86,15 @@ export async function POST(req: NextRequest) {
     sent++
   }
 
-  return NextResponse.json({ success: true, sent, pending: pending.length })
+  return { success: true, sent, pending: pending.length }
+}
+
+export async function POST(req: NextRequest) {
+  const result = await sendReminders()
+  return NextResponse.json(result)
+}
+
+export async function GET(req: NextRequest) {
+  const result = await sendReminders()
+  return NextResponse.json(result)
 }
