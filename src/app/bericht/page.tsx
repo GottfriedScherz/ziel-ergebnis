@@ -36,6 +36,23 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
 }
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 
+const PRINT_STYLES = `
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  .print-container { max-width: 100% !important; padding: 0 !important; }
+  nav { display: none !important; }
+  .overflow-auto { overflow: visible !important; max-height: none !important; }
+  table { width: 100% !important; font-size: 8px !important; }
+  th, td { padding: 2px 3px !important; }
+  input { border: none !important; background: transparent !important; }
+  .rounded-2xl { border-radius: 4px !important; }
+  .mb-4 { margin-bottom: 4px !important; }
+  textarea { border: none !important; resize: none !important; }
+}
+`
+
 function BerichtContent() {
   const router = useRouter()
   const params = useSearchParams()
@@ -59,7 +76,8 @@ function BerichtContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [ownerName, setOwnerName] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
+  const [ownerAvatarUrl, setOwnerAvatarUrl] = useState<string|null>(null)
+  const [myAvatarUrl, setMyAvatarUrl] = useState<string|null>(null)
 
   useEffect(() => {
     if (!getToken()) { router.push('/login'); return }
@@ -68,13 +86,13 @@ function BerichtContent() {
       const prof = data?.[0]
       if (!prof) { router.push('/login'); return }
       setProfile(prof)
-      setAvatarUrl(prof.avatar_url || null)
+      setMyAvatarUrl(prof.avatar_url || null)
 
       const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
       setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
 
       if (berichtId) {
-        const b = await dbQuery('berichte', `id=eq.${berichtId}&select=*,profiles(name)`)
+        const b = await dbQuery('berichte', `id=eq.${berichtId}&select=*,profiles(name,avatar_url)`)
         if (b?.[0]) {
           const bericht = b[0]
           setMonat(bericht.monat); setWoche(bericht.woche)
@@ -84,6 +102,7 @@ function BerichtContent() {
           setVipJahrZiel(bericht.vip_jahr_ziel ?? ''); setVipJahrStand(bericht.vip_jahr_stand ?? '')
           setVipMonatZiel(bericht.vip_monat_ziel ?? ''); setVipMonatStand(bericht.vip_monat_stand ?? '')
           setOwnerName(bericht.profiles?.name || '')
+          setOwnerAvatarUrl(bericht.profiles?.avatar_url || null)
           const eintr = await dbQuery('eintraege', `bericht_id=eq.${berichtId}&select=*`)
           const c: any = {}
           ;(eintr || []).forEach((e: any) => {
@@ -151,16 +170,24 @@ function BerichtContent() {
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
   const isG = (i: number) => i % 2 === 0
 
+  const displayName = readonly && ownerName ? ownerName : profile.name
+  const displayAvatar = readonly && ownerName ? ownerAvatarUrl : myAvatarUrl
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <style>{PRINT_STYLES}</style>
+      <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between no-print">
         <Link href="/dashboard" className="text-sm text-blue-600 font-medium">← Dashboard</Link>
         <h1 className="font-bold text-gray-800">📊 Ziel & Ergebnis</h1>
-        <div className="w-20" />
+        <button onClick={() => window.print()}
+          className="text-gray-500 hover:text-gray-700 transition p-1.5 rounded-lg hover:bg-gray-100"
+          title="Drucken">
+          🖨️
+        </button>
       </nav>
-      <div className="max-w-5xl mx-auto px-4 py-5">
+      <div className="max-w-5xl mx-auto px-4 py-5 print-container">
         {readonly && ownerName && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 mb-4 text-sm text-blue-700">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 mb-4 text-sm text-blue-700 no-print">
             Bericht von <strong>{ownerName}</strong> — Nur-Lesen-Ansicht
           </div>
         )}
@@ -168,7 +195,10 @@ function BerichtContent() {
           <div className="flex gap-3 flex-wrap mb-3">
             <div className="flex flex-col gap-1 flex-1 min-w-48">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</label>
-              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50 flex items-center gap-2"><Avatar url={avatarUrl} name={readonly && ownerName ? ownerName : profile.name} size={28} />{readonly && ownerName ? ownerName : profile.name}</div>
+              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50 flex items-center gap-2">
+                <Avatar url={displayAvatar} name={displayName} size={28} />
+                {displayName}
+              </div>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Monat</label>
@@ -250,7 +280,7 @@ function BerichtContent() {
         </div>
         {!readonly && (
           <button onClick={handleSave} disabled={saving}
-            className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+            className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition no-print">
             {saving ? 'Speichern...' : saved ? '✓ Gespeichert' : '💾 Speichern'}
           </button>
         )}
