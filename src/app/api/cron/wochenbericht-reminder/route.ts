@@ -66,7 +66,7 @@ async function sendReminders() {
         subject: '📋 Wochenbericht noch offen',
         html: `
           <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
-            <h2 style="color: #1a1a1a;">Hallo ${user.name}!</h2>
+            <h2 style="color: #1a1a1a;">Hallo ${user.name.split(' ')[0]}!</h2>
             <p style="color: #444; font-size: 15px; line-height: 1.6;">
               Dein Wochenbericht für <strong>${monat} / ${woche}</strong> wurde noch nicht eingegeben.
             </p>
