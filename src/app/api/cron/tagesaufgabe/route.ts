@@ -27,7 +27,7 @@ async function sendEmails() {
         'Authorization': `Bearer ${RESEND_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Ziel & Ergebnis <noreply@finanziellfrei.at>',
+        from: 'Deine heutigen TOP 3 <noreply@finanziellfrei.at>',
         to: user.email,
         subject: `☀️ Guten Morgen ${user.name} – Was sind heute Deine 3 wichtigsten Aufgaben?`,
         html: `
