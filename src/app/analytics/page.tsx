@@ -11,13 +11,14 @@ const JAHRE = [2024, 2025, 2026, 2027, 2028]
 
 const PRINT_STYLES = `
 @media print {
-  @page { size: A4 portrait; margin: 12mm; }
+  @page { size: A4 portrait; margin: 12mm 15mm; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .no-print { display: none !important; }
   nav { display: none !important; }
   .print-container { max-width: 100% !important; padding: 0 !important; }
   .rounded-2xl { border-radius: 4px !important; }
   .mb-5 { margin-bottom: 8px !important; }
+  .recharts-wrapper, .recharts-surface { max-width: 100% !important; }
 }
 `
 
