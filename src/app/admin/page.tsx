@@ -3,10 +3,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dbQuery, dbInsert, dbUpdate, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
-import Avatar from '@/components/Avatar'
 
 interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null; avatar_url?: string | null }
 interface FormZeile { id: string; name: string; reihenfolge: number; stufe_min: number; aktiv: boolean }
+
+function UserAvatar({ url, name, size = 36 }: { url?: string | null; name: string; size?: number }) {
+  const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+  if (url) return <img src={url} alt={name} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover'}} className="border-2 border-gray-200" />
+  return <div style={{width:size,height:size,borderRadius:'50%',fontSize:size*0.35}} className="bg-blue-100 text-blue-700 flex items-center justify-center font-semibold border-2 border-gray-200">{initials}</div>
+}
 
 export default function Admin() {
   const [profile, setProfile] = useState<any>(null)
@@ -138,7 +143,7 @@ export default function Admin() {
                   <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar url={u.avatar_url as any} name={u.name} size={36} editable userId={u.id} onUpdate={url => setUsers(prev => prev.map(x => x.id === u.id ? {...x, avatar_url: url} : x))} />
+                        <UserAvatar url={u.avatar_url} name={u.name} size={36} />
                         <div>
                           <div className="text-sm font-medium text-gray-700">{u.name}</div>
                           <div className="text-xs text-gray-400">{u.email}</div>
