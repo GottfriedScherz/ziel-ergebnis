@@ -53,7 +53,7 @@ const PRINT_STYLES = `
   thead th { position: static !important; }
   th { font-size: 7px !important; padding: 2px 1px !important; }
   td { padding: 1px !important; }
-  input { border: none !important; background: transparent !important; font-size: 9px !important; padding: 2px 0 !important; width: 100% !important; text-align: center !important; }
+  input { border: none !important; background: transparent !important; font-size: 11px !important; padding: 2px 0 !important; width: 100% !important; text-align: center !important; }
   .rounded-2xl { border-radius: 3px !important; }
   .mb-4 { margin-bottom: 3px !important; }
   .p-4 { padding: 4px !important; }
