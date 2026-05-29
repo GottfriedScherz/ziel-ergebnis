@@ -46,19 +46,21 @@ export default function Dashboard() {
 
   function handleLogout() { logout(); router.push('/login') }
 
-  async function handleDelete(id: string, label: string, isTeam = false) {
-    if (!confirm(`Bericht "${label}" wirklich löschen?`)) return
-    setDeletingId(id)
-    await dbDelete('eintraege', `bericht_id=eq.${id}`)
-    await dbDelete('berichte', `id=eq.${id}`)
-    setDeletingId(null)
-    if (isTeam) {
-      setTeamBerichte(prev => prev.filter(b => b.id !== id))
-    } else {
-      setBerichte(prev => prev.filter(b => b.id !== id))
-    }
+ async function handleDelete(id: string, label: string, isTeam = false) {
+  if (!confirm(`Bericht "${label}" wirklich löschen?`)) return
+  setDeletingId(id)
+  await fetch('/api/admin-zeile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete_bericht', berichtId: id })
+  })
+  setDeletingId(null)
+  if (isTeam) {
+    setTeamBerichte(prev => prev.filter(b => b.id !== id))
+  } else {
+    setBerichte(prev => prev.filter(b => b.id !== id))
   }
-
+}
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
 
   return (
