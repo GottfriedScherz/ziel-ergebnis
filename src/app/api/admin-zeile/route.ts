@@ -24,12 +24,14 @@ export async function POST(req: NextRequest) {
 
   if (action === 'delete_bericht') {
     const { berichtId } = body
-    await fetch(`${SUPABASE_URL}/rest/v1/eintraege?bericht_id=eq.${berichtId}`, {
-      method: 'DELETE', headers
-    })
-    await fetch(`${SUPABASE_URL}/rest/v1/berichte?id=eq.${berichtId}`, {
-      method: 'DELETE', headers
-    })
+    await fetch(`${SUPABASE_URL}/rest/v1/eintraege?bericht_id=eq.${berichtId}`, { method: 'DELETE', headers })
+    await fetch(`${SUPABASE_URL}/rest/v1/berichte?id=eq.${berichtId}`, { method: 'DELETE', headers })
+    return NextResponse.json({ success: true })
+  }
+
+  if (action === 'delete_zeile') {
+    const { id } = body
+    await fetch(`${SUPABASE_URL}/rest/v1/formular_zeilen?id=eq.${id}`, { method: 'DELETE', headers })
     return NextResponse.json({ success: true })
   }
 
