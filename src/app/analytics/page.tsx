@@ -162,17 +162,16 @@ export default function Analytics() {
 
   function renderLegendButtons(zeilen: string[], colors: string[]) {
     return (
-      <div className="flex gap-2 flex-wrap no-print">
-        {zeilen.map((z, i) => (
-          <button key={z} onClick={() => toggleLine(z)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${hiddenLines[z] ? 'opacity-40 bg-gray-100 border-gray-200' : 'bg-white border-gray-300'}`}>
-            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{backgroundColor: colors[i % colors.length]}} />
-            {z}
-          </button>
-        ))}
+      <div className="grid grid-cols-4 gap-3 mb-5 md:grid-cols-6 lg:grid-cols-8 flex-wrap">
+  {relevanteZeilen.map(({ name }, i) => (
+    <div key={name} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+      <div className="text-2xl font-bold" style={{color: LINE_COLORS[i % LINE_COLORS.length]}}>
+        {total(name)}
       </div>
-    )
-  }
+      <div className="text-xs text-gray-500 mt-0.5 leading-tight">{name}</div>
+    </div>
+  ))}
+</div>
 
   const printLabel = `${selectedUser === 'all' ? 'Gesamte Struktur' : visibleUsers.find((u: any) => u.id === selectedUser)?.name || ''}${inclSubtree && selectedUser !== 'all' ? ' inkl. Unterstruktur' : ''} — ${vonMonat} ${vonJahr} bis ${bisMonat} ${bisJahr}`
 
