@@ -43,18 +43,24 @@ const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August'
 
 const PRINT_STYLES = `
 @media print {
-  @page { size: A4 landscape; margin: 10mm; }
+  @page { size: A4 landscape; margin: 8mm; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .no-print { display: none !important; }
   .print-container { max-width: 100% !important; padding: 0 !important; }
   nav { display: none !important; }
   .overflow-auto { overflow: visible !important; max-height: none !important; }
-  table { width: 100% !important; font-size: 8px !important; }
-  th, td { padding: 2px 3px !important; }
-  input { border: none !important; background: transparent !important; }
+  table { width: 100% !important; font-size: 7px !important; table-layout: fixed !important; }
+  th, td { padding: 1px 2px !important; }
+  th { font-size: 6.5px !important; }
+  input { border: none !important; background: transparent !important; font-size: 7px !important; padding: 1px !important; }
   .rounded-2xl { border-radius: 4px !important; }
-  .mb-4 { margin-bottom: 4px !important; }
-  textarea { border: none !important; resize: none !important; }
+  .mb-4 { margin-bottom: 3px !important; }
+  .p-4 { padding: 4px !important; }
+  .p-3 { padding: 3px !important; }
+  textarea { border: none !important; resize: none !important; font-size: 7px !important; }
+  .grid { gap: 3px !important; }
+  .text-base { font-size: 10px !important; }
+  img { width: 40px !important; height: 40px !important; }
 }
 `
 
