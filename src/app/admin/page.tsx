@@ -54,8 +54,8 @@ export default function Admin() {
     setTimeout(() => setMsg(''), 4000)
   }
 
-  async function adminZeile(body: any) {
-    const res = await fetch('/api/admin-zeile', {
+  async function adminApi(url: string, body: any) {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -64,32 +64,24 @@ export default function Admin() {
   }
 
   async function updateUser(id: string, field: string, value: any) {
-  const current = users.find(u => u.id === id)
-  if (!current || (current as any)[field] === value) return
-  const res = await fetch('/api/admin-zeile', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'update_user', id, field, value })
-  })
-  if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
-}
+    const current = users.find(u => u.id === id)
+    if (!current || (current as any)[field] === value) return
+    const data = await adminApi('/api/admin-zeile', { action: 'update_user', id, field, value })
+    if (!data.error) setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
+    else showMsg('Fehler beim Speichern', 'err')
+  }
 
   async function deleteUser(id: string, name: string) {
     if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
     setDeletingId(id)
-    const res = await fetch('/api/delete-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: id })
-    })
-    const data = await res.json()
+    const data = await adminApi('/api/delete-user', { userId: id })
     setDeletingId(null)
     if (data.error) showMsg('Fehler: ' + data.error, 'err')
     else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
   }
 
   async function updateZeileProp(id: string, field: string, value: any) {
-    await adminZeile({ action: 'update', id, [field]: value })
+    await adminApi('/api/admin-zeile', { action: 'update', id, [field]: value })
     setZeilen(prev => prev.map(z => z.id === id ? { ...z, [field]: value } : z))
   }
 
@@ -98,8 +90,8 @@ export default function Admin() {
     for (const z of zeilen) {
       const newNameVal = zeilenEdits[z.id] ?? z.name
       if (newNameVal !== z.name) {
-        await adminZeile({ action: 'update', id: z.id, name: newNameVal })
-        await adminZeile({ action: 'update_eintraege_zeile', name: z.name, aktiv: newNameVal })
+        await adminApi('/api/admin-zeile', { action: 'update', id: z.id, name: newNameVal })
+        await adminApi('/api/admin-zeile', { action: 'update_eintraege_zeile', name: z.name, aktiv: newNameVal })
       }
     }
     setZeilen(prev => prev.map(z => ({ ...z, name: zeilenEdits[z.id] ?? z.name })))
@@ -110,7 +102,7 @@ export default function Admin() {
   async function addZeile() {
     if (!newZeile.trim()) return
     const maxOrd = Math.max(...zeilen.map(z => z.reihenfolge), 0)
-    const result = await adminZeile({ action: 'insert', name: newZeile, stufe_min: newStufeMin, reihenfolge: maxOrd + 1 })
+    const result = await adminApi('/api/admin-zeile', { action: 'insert', name: newZeile, stufe_min: newStufeMin, reihenfolge: maxOrd + 1 })
     if (result.error) { showMsg('Fehler: ' + JSON.stringify(result.error), 'err'); return }
     if (result.data) {
       setZeilen(prev => [...prev, result.data])
@@ -123,12 +115,7 @@ export default function Admin() {
   async function createUser() {
     if (!newName || !newEmail) { showMsg('Bitte Name und E-Mail ausfüllen.', 'err'); return }
     setCreating(true)
-    const res = await fetch('/api/create-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName, email: newEmail, karrierestufe: newStufe, betreuer_id: newBetreuer || null })
-    })
-    const data = await res.json()
+    const data = await adminApi('/api/create-user', { name: newName, email: newEmail, karrierestufe: newStufe, betreuer_id: newBetreuer || null })
     setCreating(false)
     if (data.error) { showMsg('Fehler: ' + data.error, 'err') }
     else {
