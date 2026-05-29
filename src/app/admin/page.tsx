@@ -64,13 +64,15 @@ export default function Admin() {
   }
 
   async function updateUser(id: string, field: string, value: any) {
-    const res = await fetch('/api/admin-zeile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'update_user', id, field, value })
-    })
-    if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
-  }
+  const current = users.find(u => u.id === id)
+  if (!current || (current as any)[field] === value) return
+  const res = await fetch('/api/admin-zeile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'update_user', id, field, value })
+  })
+  if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
+}
 
   async function deleteUser(id: string, name: string) {
     if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
