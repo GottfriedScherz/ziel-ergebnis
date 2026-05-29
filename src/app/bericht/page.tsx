@@ -3,10 +3,15 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { dbQuery, dbInsert, dbUpdate, dbDelete, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
-import Avatar from '@/components/Avatar'
 import { Suspense } from 'react'
 
 const DAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']
+
+function UserAvatar({ url, name, size = 40 }: { url?: string | null; name: string; size?: number }) {
+  const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+  if (url) return <img src={url} alt={name} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover'}} className="border-2 border-gray-200 flex-shrink-0" />
+  return <div style={{width:size,height:size,borderRadius:'50%',fontSize:size*0.35}} className="bg-blue-100 text-blue-700 flex items-center justify-center font-semibold border-2 border-gray-200 flex-shrink-0">{initials}</div>
+}
 
 function getWeekOptions(monatName: string): {label: string, value: string}[] {
   const MONATE_IDX = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
@@ -195,9 +200,9 @@ function BerichtContent() {
           <div className="flex gap-3 flex-wrap mb-3">
             <div className="flex flex-col gap-1 flex-1 min-w-48">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Name</label>
-              <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50 flex items-center gap-2">
-                <Avatar url={displayAvatar} name={displayName} size={28} />
-                {displayName}
+              <div className="border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 bg-gray-50 flex items-center gap-4">
+                <UserAvatar url={displayAvatar} name={displayName} size={84} />
+                <span className="font-semibold text-base text-gray-800">{displayName}</span>
               </div>
             </div>
             <div className="flex flex-col gap-1">
