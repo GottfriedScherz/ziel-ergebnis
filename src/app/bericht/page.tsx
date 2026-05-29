@@ -100,11 +100,8 @@ function BerichtContent() {
       setProfile(prof)
       setMyAvatarUrl(prof.avatar_url || null)
 
-      const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
-      setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
-
       if (berichtId) {
-        const b = await dbQuery('berichte', `id=eq.${berichtId}&select=*,profiles(name,avatar_url)`)
+        const b = await dbQuery('berichte', `id=eq.${berichtId}&select=*,profiles(name,avatar_url,karrierestufe)`)
         if (b?.[0]) {
           const bericht = b[0]
           setMonat(bericht.monat); setWoche(bericht.woche)
@@ -115,6 +112,14 @@ function BerichtContent() {
           setVipMonatZiel(bericht.vip_monat_ziel ?? ''); setVipMonatStand(bericht.vip_monat_stand ?? '')
           setOwnerName(bericht.profiles?.name || '')
           setOwnerAvatarUrl(bericht.profiles?.avatar_url || null)
+
+          // Zeilen nach Karrierestufe des Owners filtern (bei readonly), sonst nach eigenem Profil
+          const stufe = readonly && bericht.profiles?.karrierestufe
+            ? bericht.profiles.karrierestufe
+            : prof.karrierestufe
+          const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
+          setZeilen((z || []).filter((row: any) => row.stufe_min <= stufe))
+
           const eintr = await dbQuery('eintraege', `bericht_id=eq.${berichtId}&select=*`)
           const c: any = {}
           ;(eintr || []).forEach((e: any) => {
@@ -123,6 +128,10 @@ function BerichtContent() {
           })
           setCells(c)
         }
+      } else {
+        // Neuer Bericht: Zeilen nach eigenem Profil
+        const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
+        setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
       }
     })
   }, [berichtId, router])
