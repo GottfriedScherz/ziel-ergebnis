@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { dbQuery, dbInsert, dbUpdate, getToken, getUser } from '@/lib/supabase'
+import { dbQuery, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
 
 interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null; avatar_url?: string | null }
@@ -54,9 +54,22 @@ export default function Admin() {
     setTimeout(() => setMsg(''), 4000)
   }
 
+  async function adminZeile(body: any) {
+    const res = await fetch('/api/admin-zeile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    return res.json()
+  }
+
   async function updateUser(id: string, field: string, value: any) {
-    await dbUpdate('profiles', `id=eq.${id}`, { [field]: value })
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
+    const res = await fetch('/api/admin-zeile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_user', id, field, value })
+    })
+    if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
   }
 
   async function deleteUser(id: string, name: string) {
@@ -73,12 +86,18 @@ export default function Admin() {
     else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
   }
 
+  async function updateZeileProp(id: string, field: string, value: any) {
+    await adminZeile({ action: 'update', id, [field]: value })
+    setZeilen(prev => prev.map(z => z.id === id ? { ...z, [field]: value } : z))
+  }
+
   async function saveZeilen() {
     setSavingZeilen(true)
     for (const z of zeilen) {
       const newNameVal = zeilenEdits[z.id] ?? z.name
       if (newNameVal !== z.name) {
-        await dbUpdate('formular_zeilen', `id=eq.${z.id}`, { name: newNameVal })
+        await adminZeile({ action: 'update', id: z.id, name: newNameVal })
+        await adminZeile({ action: 'update_eintraege_zeile', name: z.name, aktiv: newNameVal })
       }
     }
     setZeilen(prev => prev.map(z => ({ ...z, name: zeilenEdits[z.id] ?? z.name })))
@@ -86,20 +105,16 @@ export default function Admin() {
     showMsg('Formular gespeichert ✓', 'ok')
   }
 
-  async function updateZeileProp(id: string, field: string, value: any) {
-    await dbUpdate('formular_zeilen', `id=eq.${id}`, { [field]: value })
-    setZeilen(prev => prev.map(z => z.id === id ? { ...z, [field]: value } : z))
-  }
-
   async function addZeile() {
     if (!newZeile.trim()) return
     const maxOrd = Math.max(...zeilen.map(z => z.reihenfolge), 0)
-    const data = await dbInsert('formular_zeilen', { name: newZeile, reihenfolge: maxOrd + 1, stufe_min: newStufeMin, aktiv: true })
-    if (data?.[0]) {
-      setZeilen(prev => [...prev, data[0]])
-      setZeilenEdits(prev => ({ ...prev, [data[0].id]: data[0].name }))
-      setNewZeile('')
+    const result = await adminZeile({ action: 'insert', name: newZeile, stufe_min: newStufeMin, reihenfolge: maxOrd + 1 })
+    if (result.error) { showMsg('Fehler: ' + JSON.stringify(result.error), 'err'); return }
+    if (result.data) {
+      setZeilen(prev => [...prev, result.data])
+      setZeilenEdits(prev => ({ ...prev, [result.data.id]: result.data.name }))
     }
+    setNewZeile('')
     showMsg('Zeile hinzugefügt ✓', 'ok')
   }
 
@@ -207,7 +222,7 @@ export default function Admin() {
           <div className="space-y-3">
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 text-xs text-gray-500">
-                Stufen-Logik: VM sieht Stufe 1+, VBA sieht Stufe 2+, HB sieht alle (Stufe 3)
+                Stufen-Logik: VM sieht Stufe 1+, VBA sieht Stufe 2+, HB sieht alle
               </div>
               <table className="w-full">
                 <thead><tr className="bg-gray-50 border-b border-gray-200">
@@ -219,8 +234,7 @@ export default function Admin() {
                   {zeilen.map(z => (
                     <tr key={z.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <input
-                          value={zeilenEdits[z.id] ?? z.name}
+                        <input value={zeilenEdits[z.id] ?? z.name}
                           onChange={e => setZeilenEdits(prev => ({ ...prev, [z.id]: e.target.value }))}
                           className="border border-gray-200 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-400" />
                       </td>
