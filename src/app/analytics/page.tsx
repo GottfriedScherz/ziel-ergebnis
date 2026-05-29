@@ -37,7 +37,7 @@ export default function Analytics() {
   const [bisMonat, setBisMonat] = useState(MONATE[new Date().getMonth()])
   const [bisJahr, setBisJahr] = useState(new Date().getFullYear())
   const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({})
-  const [formularZeilen, setFormularZeilen] = useState<string[]>([])
+  const [formularZeilen, setFormularZeilen] = useState<{name: string, stufe_min: number}[]>([])
   const router = useRouter()
 
   function getSubtreeIds(userId: string, users: any[]): string[] {
@@ -64,7 +64,7 @@ export default function Analytics() {
       }
       setVisibleUsers(visible)
       const zeilen = await dbQuery('formular_zeilen', 'aktiv=eq.true&order=reihenfolge') || []
-      setFormularZeilen(zeilen.map((z: any) => z.name))
+      setFormularZeilen(zeilen.map((z: any) => ({ name: z.name, stufe_min: z.stufe_min })))
     })
   }, [router])
 
@@ -87,7 +87,13 @@ export default function Analytics() {
     const idFilter = userIds.length === 1
       ? `user_id=eq.${userIds[0]}`
       : `user_id=in.(${userIds.join(',')})`
-    const b = await dbQuery('berichte', `${idFilter}&select=*&order=jahr,monat`) || []
+    const b = await dbQuery('berichte', `${idFilter}&select=*&order=jahr,monat,woche`) || []
+    // Sort correctly by jahr, monat index, woche number
+    b.sort((a: any, b: any) => {
+      const aVal = parseInt(a.jahr) * 1000 + monatIndex(a.monat) * 10 + parseInt(a.woche.replace('Woche ', ''))
+      const bVal = parseInt(b.jahr) * 1000 + monatIndex(b.monat) * 10 + parseInt(b.woche.replace('Woche ', ''))
+      return aVal - bVal
+    })
     setBerichte(b)
     if (b.length > 0) {
       const bIds = b.map((x: any) => x.id)
@@ -105,16 +111,30 @@ export default function Analytics() {
   const filteredBerichte = berichte.filter(b => {
     const bJahr = parseInt(b.jahr)
     const bMonatIdx = monatIndex(b.monat)
-    const vonIdx = monatIndex(vonMonat)
-    const bisIdx = monatIndex(bisMonat)
-    const vonVal = vonJahr * 12 + vonIdx
-    const bisVal = bisJahr * 12 + bisIdx
+    const vonVal = vonJahr * 12 + monatIndex(vonMonat)
+    const bisVal = bisJahr * 12 + monatIndex(bisMonat)
     const bVal = bJahr * 12 + bMonatIdx
     return bVal >= vonVal && bVal <= bisVal
   })
 
-  const aktivitaetenZeilen = formularZeilen.filter(z => z !== 'Einheiten')
-  const einheitenZeile = formularZeilen.includes('Einheiten') ? 'Einheiten' : null
+  // Determine max karrierestufe of selected users
+  function getMaxStufe(): number {
+    if (selectedUser === 'all') {
+      return Math.max(...visibleUsers.map((u: any) => u.karrierestufe || 1), 1)
+    }
+    let userIds = inclSubtree
+      ? [selectedUser, ...getSubtreeIds(selectedUser, allUsers)]
+      : [selectedUser]
+    return Math.max(...userIds.map(id => {
+      const u = allUsers.find((x: any) => x.id === id)
+      return u?.karrierestufe || 1
+    }), 1)
+  }
+
+  const maxStufe = getMaxStufe()
+  const relevanteZeilen = formularZeilen.filter(z => z.stufe_min <= maxStufe)
+  const aktivitaetenZeilen = relevanteZeilen.filter(z => z.name !== 'Einheiten').map(z => z.name)
+  const einheitenZeile = relevanteZeilen.find(z => z.name === 'Einheiten')?.name || null
 
   const buildChartData = (zeilen: string[]) => filteredBerichte.map(b => {
     const be = eintraege.filter(e => e.bericht_id === b.id)
@@ -223,10 +243,12 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-5">
-          {[['Beratungen Neukunden','Beratungen','blue'],['Abschlüsse','Abschlüsse','green'],['Einheiten','Einheiten','purple']].map(([zeile,label,color]) => (
-            <div key={label} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-              <div className={`text-3xl font-bold text-${color}-600`}>{total(zeile)}</div>
-              <div className="text-xs text-gray-500 mt-1">{label} gesamt</div>
+          {relevanteZeilen.slice(0, 3).map(({ name }, i) => (
+            <div key={name} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+              <div className={`text-3xl font-bold ${i === 0 ? 'text-blue-600' : i === 1 ? 'text-green-600' : 'text-purple-600'}`}>
+                {total(name)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">{name} gesamt</div>
             </div>
           ))}
         </div>
