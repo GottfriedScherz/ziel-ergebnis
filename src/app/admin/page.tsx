@@ -17,6 +17,8 @@ export default function Admin() {
   const [profile, setProfile] = useState<any>(null)
   const [users, setUsers] = useState<Profile[]>([])
   const [zeilen, setZeilen] = useState<FormZeile[]>([])
+  const [zeilenEdits, setZeilenEdits] = useState<Record<string, string>>({})
+  const [savingZeilen, setSavingZeilen] = useState(false)
   const [tab, setTab] = useState<'users'|'form'|'neuer'>('users')
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
@@ -38,7 +40,12 @@ export default function Admin() {
       if (!prof?.is_admin) { router.push('/dashboard'); return }
       setProfile(prof)
       dbQuery('profiles', 'select=*&order=name').then(u => setUsers(u || []))
-      dbQuery('formular_zeilen', 'select=*&order=reihenfolge').then(z => setZeilen(z || []))
+      dbQuery('formular_zeilen', 'select=*&order=reihenfolge').then(z => {
+        setZeilen(z || [])
+        const edits: Record<string, string> = {}
+        ;(z || []).forEach((row: FormZeile) => { edits[row.id] = row.name })
+        setZeilenEdits(edits)
+      })
     })
   }, [router])
 
@@ -63,13 +70,23 @@ export default function Admin() {
     const data = await res.json()
     setDeletingId(null)
     if (data.error) showMsg('Fehler: ' + data.error, 'err')
-    else {
-      setUsers(prev => prev.filter(u => u.id !== id))
-      showMsg(`${name} wurde gelöscht.`, 'ok')
-    }
+    else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
   }
 
-  async function updateZeile(id: string, field: string, value: any) {
+  async function saveZeilen() {
+    setSavingZeilen(true)
+    for (const z of zeilen) {
+      const newNameVal = zeilenEdits[z.id] ?? z.name
+      if (newNameVal !== z.name) {
+        await dbUpdate('formular_zeilen', `id=eq.${z.id}`, { name: newNameVal })
+      }
+    }
+    setZeilen(prev => prev.map(z => ({ ...z, name: zeilenEdits[z.id] ?? z.name })))
+    setSavingZeilen(false)
+    showMsg('Formular gespeichert ✓', 'ok')
+  }
+
+  async function updateZeileProp(id: string, field: string, value: any) {
     await dbUpdate('formular_zeilen', `id=eq.${id}`, { [field]: value })
     setZeilen(prev => prev.map(z => z.id === id ? { ...z, [field]: value } : z))
   }
@@ -78,7 +95,11 @@ export default function Admin() {
     if (!newZeile.trim()) return
     const maxOrd = Math.max(...zeilen.map(z => z.reihenfolge), 0)
     const data = await dbInsert('formular_zeilen', { name: newZeile, reihenfolge: maxOrd + 1, stufe_min: newStufeMin, aktiv: true })
-    if (data?.[0]) { setZeilen(prev => [...prev, data[0]]); setNewZeile('') }
+    if (data?.[0]) {
+      setZeilen(prev => [...prev, data[0]])
+      setZeilenEdits(prev => ({ ...prev, [data[0].id]: data[0].name }))
+      setNewZeile('')
+    }
     showMsg('Zeile hinzugefügt ✓', 'ok')
   }
 
@@ -92,9 +113,8 @@ export default function Admin() {
     })
     const data = await res.json()
     setCreating(false)
-    if (data.error) {
-      showMsg('Fehler: ' + data.error, 'err')
-    } else {
+    if (data.error) { showMsg('Fehler: ' + data.error, 'err') }
+    else {
       showMsg('✓ Partner angelegt! Einladungsmail wurde verschickt.', 'ok')
       setNewName(''); setNewEmail(''); setNewStufe(1); setNewBetreuer('')
       dbQuery('profiles', 'select=*&order=name').then(u => setUsers(u || []))
@@ -186,35 +206,44 @@ export default function Admin() {
         {tab === 'form' && (
           <div className="space-y-3">
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 text-xs text-gray-500">
+                Stufen-Logik: VM sieht Stufe 1+, VBA sieht Stufe 2+, HB sieht alle (Stufe 3)
+              </div>
               <table className="w-full">
                 <thead><tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Zeile</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ab Stufe</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sichtbar ab</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Aktiv</th>
                 </tr></thead>
                 <tbody>
                   {zeilen.map(z => (
                     <tr key={z.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <input value={z.name} onChange={e => updateZeile(z.id, 'name', e.target.value)}
+                        <input
+                          value={zeilenEdits[z.id] ?? z.name}
+                          onChange={e => setZeilenEdits(prev => ({ ...prev, [z.id]: e.target.value }))}
                           className="border border-gray-200 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-400" />
                       </td>
                       <td className="px-4 py-3">
-                        <select value={z.stufe_min} onChange={e => updateZeile(z.id, 'stufe_min', parseInt(e.target.value))}
+                        <select value={z.stufe_min} onChange={e => updateZeileProp(z.id, 'stufe_min', parseInt(e.target.value))}
                           className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                          <option value={1}>VM (alle)</option>
-                          <option value={2}>VBA + HB</option>
+                          <option value={1}>VM, VBA & HB</option>
+                          <option value={2}>VBA & HB</option>
                           <option value={3}>Nur HB</option>
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        <input type="checkbox" checked={z.aktiv} onChange={e => updateZeile(z.id, 'aktiv', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                        <input type="checkbox" checked={z.aktiv} onChange={e => updateZeileProp(z.id, 'aktiv', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <button onClick={saveZeilen} disabled={savingZeilen}
+              className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+              {savingZeilen ? 'Wird gespeichert...' : '💾 Zeilennamen speichern'}
+            </button>
             <div className="bg-white rounded-2xl border border-gray-200 p-4">
               <h3 className="font-semibold text-gray-700 mb-3 text-sm">Neue Zeile hinzufügen</h3>
               <div className="flex gap-2 flex-wrap">
@@ -222,8 +251,8 @@ export default function Admin() {
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <select value={newStufeMin} onChange={e => setNewStufeMin(parseInt(e.target.value))}
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-                  <option value={1}>VM (alle)</option>
-                  <option value={2}>VBA + HB</option>
+                  <option value={1}>VM, VBA & HB</option>
+                  <option value={2}>VBA & HB</option>
                   <option value={3}>Nur HB</option>
                 </select>
                 <button onClick={addZeile} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Hinzufügen</button>
