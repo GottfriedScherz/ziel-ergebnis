@@ -6,6 +6,7 @@ import Link from 'next/link'
 
 interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null; avatar_url?: string | null }
 interface FormZeile { id: string; name: string; reihenfolge: number; stufe_min: number; aktiv: boolean }
+interface AuthStatus { id: string; confirmed: boolean; last_sign_in: string | null }
 
 function UserAvatar({ url, name, size = 36 }: { url?: string | null; name: string; size?: number }) {
   const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -16,6 +17,7 @@ function UserAvatar({ url, name, size = 36 }: { url?: string | null; name: strin
 export default function Admin() {
   const [profile, setProfile] = useState<any>(null)
   const [users, setUsers] = useState<Profile[]>([])
+  const [authStatus, setAuthStatus] = useState<Record<string, AuthStatus>>({})
   const [zeilen, setZeilen] = useState<FormZeile[]>([])
   const [zeilenEdits, setZeilenEdits] = useState<Record<string, string>>({})
   const [savingZeilen, setSavingZeilen] = useState(false)
@@ -35,7 +37,7 @@ export default function Admin() {
   useEffect(() => {
     if (!getToken()) { router.push('/login'); return }
     const user = getUser()
-    dbQuery('profiles', `id=eq.${user.id}&select=*`).then(data => {
+    dbQuery('profiles', `id=eq.${user.id}&select=*`).then(async data => {
       const prof = data?.[0]
       if (!prof?.is_admin) { router.push('/dashboard'); return }
       setProfile(prof)
@@ -46,6 +48,18 @@ export default function Admin() {
         ;(z || []).forEach((row: FormZeile) => { edits[row.id] = row.name })
         setZeilenEdits(edits)
       })
+      // Auth Status laden
+      const authRes = await fetch('/api/admin-zeile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_auth_users' })
+      })
+      const authData = await authRes.json()
+      if (authData.users) {
+        const map: Record<string, AuthStatus> = {}
+        authData.users.forEach((u: AuthStatus) => { map[u.id] = u })
+        setAuthStatus(map)
+      }
     })
   }, [router])
 
@@ -167,49 +181,68 @@ export default function Admin() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Planungsvariante</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Betreuer</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Admin</th>
                 <th className="px-4 py-3" />
               </tr></thead>
               <tbody>
-                {users.map(u => (
-                  <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar url={u.avatar_url} name={u.name} size={36} />
-                        <div>
-                          <div className="text-sm font-medium text-gray-700">{u.name}</div>
-                          <div className="text-xs text-gray-400">{u.email}</div>
+                {users.map(u => {
+                  const auth = authStatus[u.id]
+                  return (
+                    <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar url={u.avatar_url} name={u.name} size={36} />
+                          <div>
+                            <div className="text-sm font-medium text-gray-700">{u.name}</div>
+                            <div className="text-xs text-gray-400">{u.email}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select value={u.karrierestufe} onChange={e => updateUser(u.id, 'karrierestufe', parseInt(e.target.value))}
-                        className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                        <option value={1}>Planungsvariante VM</option>
-                        <option value={2}>Planungsvariante VBA</option>
-                        <option value={3}>Planungsvariante HB</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select value={u.betreuer_id || ''} onChange={e => updateUser(u.id, 'betreuer_id', e.target.value || null)}
-                        className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
-                        <option value="">Kein Betreuer</option>
-                        {users.filter(x => x.id !== u.id).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input type="checkbox" checked={u.is_admin} onChange={e => updateUser(u.id, 'is_admin', e.target.checked)} className="w-4 h-4 accent-blue-600" />
-                    </td>
-                    <td className="px-4 py-3">
-                      {u.id !== profile.id && (
-                        <button onClick={() => deleteUser(u.id, u.name)} disabled={deletingId === u.id}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40">
-                          {deletingId === u.id ? '...' : 'Löschen'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select value={u.karrierestufe} onChange={e => updateUser(u.id, 'karrierestufe', parseInt(e.target.value))}
+                          className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
+                          <option value={1}>Planungsvariante VM</option>
+                          <option value={2}>Planungsvariante VBA</option>
+                          <option value={3}>Planungsvariante HB</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <select value={u.betreuer_id || ''} onChange={e => updateUser(u.id, 'betreuer_id', e.target.value || null)}
+                          className="border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white">
+                          <option value="">Kein Betreuer</option>
+                          {users.filter(x => x.id !== u.id).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        {auth ? (
+                          auth.last_sign_in ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                              ✓ Aktiv
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                              ⏳ Einladung offen
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={u.is_admin} onChange={e => updateUser(u.id, 'is_admin', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.id !== profile.id && (
+                          <button onClick={() => deleteUser(u.id, u.name)} disabled={deletingId === u.id}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40">
+                            {deletingId === u.id ? '...' : 'Löschen'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
