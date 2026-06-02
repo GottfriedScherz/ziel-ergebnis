@@ -18,7 +18,6 @@ const PRINT_STYLES = `
   .print-container { max-width: 100% !important; padding: 0 !important; }
   .rounded-2xl { border-radius: 4px !important; }
   .mb-5 { margin-bottom: 8px !important; }
-  .recharts-wrapper, .recharts-surface { max-width: 100% !important; }
 }
 `
 
@@ -32,6 +31,8 @@ export default function Analytics() {
   const [inclSubtree, setInclSubtree] = useState(true)
   const [berichte, setBerichte] = useState<any[]>([])
   const [eintraege, setEintraege] = useState<any[]>([])
+  const [vmBerichte, setVmBerichte] = useState<any[]>([])
+  const [vmEintraege, setVmEintraege] = useState<any[]>([])
   const [vonMonat, setVonMonat] = useState('Jänner')
   const [vonJahr, setVonJahr] = useState(new Date().getFullYear())
   const [bisMonat, setBisMonat] = useState(MONATE[new Date().getMonth()])
@@ -55,13 +56,8 @@ export default function Analytics() {
       setProfile(prof)
       const allProfiles = await dbQuery('profiles', 'select=*&order=name') || []
       setAllUsers(allProfiles)
-      let visible: any[]
-      if (prof.is_admin) {
-        visible = allProfiles
-      } else {
-        const subtreeIds = getSubtreeIds(prof.id, allProfiles)
-        visible = allProfiles.filter((u: any) => u.id === prof.id || subtreeIds.includes(u.id))
-      }
+      const subtreeIds = getSubtreeIds(prof.id, allProfiles)
+      const visible = prof.is_admin ? allProfiles : allProfiles.filter((u: any) => u.id === prof.id || subtreeIds.includes(u.id))
       setVisibleUsers(visible)
       const zeilen = await dbQuery('formular_zeilen', 'aktiv=eq.true&order=reihenfolge') || []
       setFormularZeilen(zeilen.map((z: any) => ({ name: z.name, stufe_min: z.stufe_min })))
@@ -78,29 +74,34 @@ export default function Analytics() {
     if (selectedUser === 'all') {
       userIds = visibleUsers.map((u: any) => u.id)
     } else if (inclSubtree) {
-      const subtreeIds = getSubtreeIds(selectedUser, allUsers)
-      userIds = [selectedUser, ...subtreeIds]
+      userIds = [selectedUser, ...getSubtreeIds(selectedUser, allUsers)]
     } else {
       userIds = [selectedUser]
     }
     if (userIds.length === 0) return
-    const idFilter = userIds.length === 1
-      ? `user_id=eq.${userIds[0]}`
-      : `user_id=in.(${userIds.join(',')})`
+    const idFilter = userIds.length === 1 ? `user_id=eq.${userIds[0]}` : `user_id=in.(${userIds.join(',')})`
+
+    // Normale Berichte
     const b = await dbQuery('berichte', `${idFilter}&select=*&order=jahr,monat,woche`) || []
     b.sort((a: any, b: any) => {
-      const aVal = parseInt(a.jahr) * 1000 + monatIndex(a.monat) * 10 + parseInt(a.woche.replace('Woche ', ''))
-      const bVal = parseInt(b.jahr) * 1000 + monatIndex(b.monat) * 10 + parseInt(b.woche.replace('Woche ', ''))
+      const aVal = parseInt(a.jahr)*1000 + monatIndex(a.monat)*10 + parseInt(a.woche.replace('Woche ',''))
+      const bVal = parseInt(b.jahr)*1000 + monatIndex(b.monat)*10 + parseInt(b.woche.replace('Woche ',''))
       return aVal - bVal
     })
     setBerichte(b)
     if (b.length > 0) {
-      const bIds = b.map((x: any) => x.id)
-      const e = await dbQuery('eintraege', `bericht_id=in.(${bIds.join(',')})&select=*`) || []
+      const e = await dbQuery('eintraege', `bericht_id=in.(${b.map((x:any)=>x.id).join(',')})&select=*`) || []
       setEintraege(e)
-    } else {
-      setEintraege([])
-    }
+    } else setEintraege([])
+
+    // VM-Berichte (nur für den ausgewählten User, nicht Subtree)
+    const vmIdFilter = userIds.length === 1 ? `user_id=eq.${userIds[0]}` : `user_id=in.(${userIds.join(',')})`
+    const vb = await dbQuery('vm_berichte', `${vmIdFilter}&select=*`) || []
+    setVmBerichte(vb)
+    if (vb.length > 0) {
+      const ve = await dbQuery('vm_eintraege', `vm_bericht_id=in.(${vb.map((x:any)=>x.id).join(',')})&select=*`) || []
+      setVmEintraege(ve)
+    } else setVmEintraege([])
   }
 
   useEffect(() => { if (profile && visibleUsers.length > 0) loadData() }, [vonMonat, vonJahr, bisMonat, bisJahr])
@@ -108,25 +109,19 @@ export default function Analytics() {
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
 
   const filteredBerichte = berichte.filter(b => {
-    const bJahr = parseInt(b.jahr)
-    const bMonatIdx = monatIndex(b.monat)
-    const vonVal = vonJahr * 12 + monatIndex(vonMonat)
-    const bisVal = bisJahr * 12 + monatIndex(bisMonat)
-    const bVal = bJahr * 12 + bMonatIdx
-    return bVal >= vonVal && bVal <= bisVal
+    const bVal = parseInt(b.jahr)*12 + monatIndex(b.monat)
+    return bVal >= vonJahr*12+monatIndex(vonMonat) && bVal <= bisJahr*12+monatIndex(bisMonat)
+  })
+
+  const filteredVmBerichte = vmBerichte.filter(b => {
+    const bVal = parseInt(b.jahr)*12 + monatIndex(b.monat)
+    return bVal >= vonJahr*12+monatIndex(vonMonat) && bVal <= bisJahr*12+monatIndex(bisMonat)
   })
 
   function getMaxStufe(): number {
-    if (selectedUser === 'all') {
-      return Math.max(...visibleUsers.map((u: any) => u.karrierestufe || 1), 1)
-    }
-    const userIds = inclSubtree
-      ? [selectedUser, ...getSubtreeIds(selectedUser, allUsers)]
-      : [selectedUser]
-    return Math.max(...userIds.map(id => {
-      const u = allUsers.find((x: any) => x.id === id)
-      return u?.karrierestufe || 1
-    }), 1)
+    const userIds = selectedUser === 'all' ? visibleUsers.map((u:any)=>u.id)
+      : inclSubtree ? [selectedUser, ...getSubtreeIds(selectedUser, allUsers)] : [selectedUser]
+    return Math.max(...userIds.map(id => allUsers.find((x:any)=>x.id===id)?.karrierestufe||1), 1)
   }
 
   const maxStufe = getMaxStufe()
@@ -134,28 +129,59 @@ export default function Analytics() {
   const aktivitaetenZeilen = relevanteZeilen.filter(z => z.name !== 'Einheiten').map(z => z.name)
   const einheitenZeile = relevanteZeilen.find(z => z.name === 'Einheiten')?.name || null
 
+  // VM-Summen pro Bericht (matched nach monat+woche+jahr des Betreuers)
+  function getVmSumForBericht(bericht: any, field: 'mg_stattgefunden' | 'analysen_stattgefunden'): number {
+    const matching = filteredVmBerichte.filter(vb =>
+      vb.monat === bericht.monat && vb.woche === bericht.woche && vb.jahr === bericht.jahr && vb.user_id === bericht.user_id
+    )
+    return matching.reduce((sum, vb) => {
+      const entries = vmEintraege.filter(ve => ve.vm_bericht_id === vb.id)
+      return sum + entries.reduce((s, e) => s + (e[field] || 0), 0)
+    }, 0)
+  }
+
+  const MG_ZEILE = 'Marktgespräche'
+  const ANALYSEN_ZEILE = 'Analysen'
+
   const buildChartData = (zeilen: string[]) => filteredBerichte.map(b => {
     const be = eintraege.filter(e => e.bericht_id === b.id)
-    const sum = (zeile: string) => be.filter(e => e.zeile === zeile).reduce((s, e: any) => s + (e.stattgefunden || 0), 0)
-    const user = allUsers.find((u: any) => u.id === b.user_id)
-    const name = `${b.monat.slice(0,3)} W${b.woche.replace('Woche ', '')}${selectedUser === 'all' ? ` (${user?.name?.split(' ')[0] || ''})` : ''}`
+    const sum = (zeile: string) => be.filter(e => e.zeile === zeile).reduce((s, e:any) => s+(e.stattgefunden||0), 0)
+    const user = allUsers.find((u:any) => u.id === b.user_id)
+    const name = `${b.monat.slice(0,3)} W${b.woche.replace('Woche ','')}${selectedUser==='all'?` (${user?.name?.split(' ')[0]||''})`:''}`
     const entry: any = { name }
-    zeilen.forEach(z => { entry[z] = sum(z) })
+    zeilen.forEach(z => {
+      let val = sum(z)
+      if (z === MG_ZEILE) val += getVmSumForBericht(b, 'mg_stattgefunden')
+      if (z === ANALYSEN_ZEILE) val += getVmSumForBericht(b, 'analysen_stattgefunden')
+      entry[z] = val
+    })
     return entry
   })
+
+  // Legendennamen anpassen
+  function legendLabel(zeile: string): string {
+    if (zeile === MG_ZEILE) return 'Marktgespräche inkl. VM'
+    if (zeile === ANALYSEN_ZEILE) return 'Analysen inkl. VM'
+    return zeile
+  }
 
   const aktivitaetenData = buildChartData(aktivitaetenZeilen)
   const einheitenData = einheitenZeile ? buildChartData([einheitenZeile]) : []
 
-  const total = (zeile: string) => eintraege
-    .filter(e => filteredBerichte.find(b => b.id === e.bericht_id))
-    .filter(e => e.zeile === zeile)
-    .reduce((s, e: any) => s + (e.stattgefunden || 0), 0)
-
-  function toggleLine(key: string) {
-    setHiddenLines(prev => ({ ...prev, [key]: !prev[key] }))
+  const total = (zeile: string) => {
+    const base = eintraege
+      .filter(e => filteredBerichte.find(b => b.id === e.bericht_id))
+      .filter(e => e.zeile === zeile)
+      .reduce((s, e:any) => s+(e.stattgefunden||0), 0)
+    const vmSum = zeile === MG_ZEILE
+      ? filteredVmBerichte.reduce((s, vb) => s + vmEintraege.filter(ve=>ve.vm_bericht_id===vb.id).reduce((ss,e)=>ss+(e.mg_stattgefunden||0),0), 0)
+      : zeile === ANALYSEN_ZEILE
+      ? filteredVmBerichte.reduce((s, vb) => s + vmEintraege.filter(ve=>ve.vm_bericht_id===vb.id).reduce((ss,e)=>ss+(e.analysen_stattgefunden||0),0), 0)
+      : 0
+    return base + vmSum
   }
 
+  function toggleLine(key: string) { setHiddenLines(prev => ({ ...prev, [key]: !prev[key] })) }
   const hasSubtree = selectedUser !== 'all' && getSubtreeIds(selectedUser, allUsers).length > 0
 
   function renderLegendButtons(zeilen: string[], colors: string[]) {
@@ -163,31 +189,22 @@ export default function Analytics() {
       <div className="flex gap-2 flex-wrap no-print">
         {zeilen.map((z, i) => (
           <button key={z} onClick={() => toggleLine(z)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${hiddenLines[z] ? 'opacity-40 bg-gray-100 border-gray-200' : 'bg-white border-gray-300'}`}>
-            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{backgroundColor: colors[i % colors.length]}} />
-            {z}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${hiddenLines[z]?'opacity-40 bg-gray-100 border-gray-200':'bg-white border-gray-300'}`}>
+            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{backgroundColor: colors[i%colors.length]}} />
+            {legendLabel(z)}
           </button>
         ))}
       </div>
     )
   }
 
-  const printLabel = `${selectedUser === 'all' ? 'Gesamte Struktur' : visibleUsers.find((u: any) => u.id === selectedUser)?.name || ''}${inclSubtree && selectedUser !== 'all' ? ' inkl. Unterstruktur' : ''} — ${vonMonat} ${vonJahr} bis ${bisMonat} ${bisJahr}`
-
   return (
     <div className="min-h-screen bg-gray-50">
       <style>{PRINT_STYLES}</style>
-      <div className="hidden print:block mb-4 text-sm text-gray-600 font-medium">
-        📈 Analytics — {printLabel}
-      </div>
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between no-print">
         <Link href="/dashboard" className="text-sm text-blue-600 font-medium">← Dashboard</Link>
         <h1 className="font-bold text-gray-800">📈 Analytics</h1>
-        <button onClick={() => window.print()}
-          className="text-gray-500 hover:text-gray-700 transition p-1.5 rounded-lg hover:bg-gray-100"
-          title="Drucken">
-          🖨️
-        </button>
+        <button onClick={() => window.print()} className="text-gray-500 hover:text-gray-700 transition p-1.5 rounded-lg hover:bg-gray-100" title="Drucken">🖨️</button>
       </nav>
       <div className="max-w-5xl mx-auto px-4 py-6 print-container">
 
@@ -197,15 +214,15 @@ export default function Analytics() {
             <select value={selectedUser} onChange={e => { setSelectedUser(e.target.value); setInclSubtree(true) }}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Gesamte Struktur</option>
-              {visibleUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {visibleUsers.map((u:any) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </div>
           {hasSubtree && (
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Unterstruktur</label>
               <button onClick={() => setInclSubtree(p => !p)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition ${inclSubtree ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-                <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${inclSubtree ? 'border-white' : 'border-gray-400'}`}>
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition ${inclSubtree?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-600 border-gray-200'}`}>
+                <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${inclSubtree?'border-white':'border-gray-400'}`}>
                   {inclSubtree && <span className="text-white text-xs">✓</span>}
                 </span>
                 Inkl. Unterstruktur
@@ -241,12 +258,10 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-4 gap-3 mb-5 lg:grid-cols-5">
-          {relevanteZeilen.map(({ name }, i) => (
+          {relevanteZeilen.map(({name}, i) => (
             <div key={name} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-              <div className="text-2xl font-bold" style={{color: LINE_COLORS[i % LINE_COLORS.length]}}>
-                {total(name)}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5 leading-tight">{name}</div>
+              <div className="text-2xl font-bold" style={{color: LINE_COLORS[i%LINE_COLORS.length]}}>{total(name)}</div>
+              <div className="text-xs text-gray-500 mt-0.5 leading-tight">{legendLabel(name)}</div>
             </div>
           ))}
         </div>
@@ -263,9 +278,7 @@ export default function Analytics() {
                 <YAxis tick={{fontSize:11}} />
                 <Tooltip />
                 {aktivitaetenZeilen.map((z, i) => (
-                  <Line key={z} type="monotone" dataKey={z}
-                    stroke={LINE_COLORS[i % LINE_COLORS.length]}
-                    strokeWidth={2} dot hide={!!hiddenLines[z]} />
+                  <Line key={z} type="monotone" dataKey={z} stroke={LINE_COLORS[i%LINE_COLORS.length]} strokeWidth={2} dot hide={!!hiddenLines[z]} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -284,14 +297,12 @@ export default function Analytics() {
                   <XAxis dataKey="name" tick={{fontSize:10}} />
                   <YAxis tick={{fontSize:11}} />
                   <Tooltip />
-                  <Line type="monotone" dataKey={einheitenZeile}
-                    stroke="#7c3aed" strokeWidth={2} dot hide={!!hiddenLines[einheitenZeile]} />
+                  <Line type="monotone" dataKey={einheitenZeile} stroke="#7c3aed" strokeWidth={2} dot hide={!!hiddenLines[einheitenZeile]} />
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
         )}
-
       </div>
     </div>
   )
