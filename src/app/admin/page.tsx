@@ -274,7 +274,9 @@ export default function Admin() {
                 <thead><tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Zeile</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sichtbar ab</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">VM-Feld</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
+  <span title="Wird dem Betreuer in folgender Kategorie angerechnet" className="cursor-help border-b border-dotted border-gray-400">VM-Feld</span>
+</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Aktiv</th>
                   <th className="px-4 py-3" />
                 </tr></thead>
