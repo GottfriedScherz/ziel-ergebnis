@@ -100,10 +100,10 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-col gap-2 items-end">
             <Link href="/bericht" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
-              + Neuer Wochenbericht
+              + Neue Wochenplanung
             </Link>
             <Link href="/vm-bericht" className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition">
-              + Wochenplanung VM's
+              + Neue Wochenplanung VM's
             </Link>
           </div>
         </div>
