@@ -38,13 +38,12 @@ export default function Analytics() {
   const [bisMonat, setBisMonat] = useState(MONATE[new Date().getMonth()])
   const [bisJahr, setBisJahr] = useState(new Date().getFullYear())
   const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({})
-  const [formularZeilen, setFormularZeilen] = useState<{name: string, stufe_min: number}[]>([])
+  const [formularZeilen, setFormularZeilen] = useState<{name: string, stufe_min: number, vm_feld: string|null}[]>([])
   const router = useRouter()
 
   function getSubtreeIds(userId: string, users: any[]): string[] {
     const direct = users.filter(u => u.betreuer_id === userId).map(u => u.id)
-    const indirect = direct.flatMap(id => getSubtreeIds(id, users))
-    return [...direct, ...indirect]
+    return [...direct, ...direct.flatMap(id => getSubtreeIds(id, users))]
   }
 
   useEffect(() => {
@@ -60,7 +59,7 @@ export default function Analytics() {
       const visible = prof.is_admin ? allProfiles : allProfiles.filter((u: any) => u.id === prof.id || subtreeIds.includes(u.id))
       setVisibleUsers(visible)
       const zeilen = await dbQuery('formular_zeilen', 'aktiv=eq.true&order=reihenfolge') || []
-      setFormularZeilen(zeilen.map((z: any) => ({ name: z.name, stufe_min: z.stufe_min })))
+      setFormularZeilen(zeilen.map((z: any) => ({ name: z.name, stufe_min: z.stufe_min, vm_feld: z.vm_feld || null })))
     })
   }, [router])
 
@@ -81,7 +80,6 @@ export default function Analytics() {
     if (userIds.length === 0) return
     const idFilter = userIds.length === 1 ? `user_id=eq.${userIds[0]}` : `user_id=in.(${userIds.join(',')})`
 
-    // Normale Berichte
     const b = await dbQuery('berichte', `${idFilter}&select=*&order=jahr,monat,woche`) || []
     b.sort((a: any, b: any) => {
       const aVal = parseInt(a.jahr)*1000 + monatIndex(a.monat)*10 + parseInt(a.woche.replace('Woche ',''))
@@ -94,9 +92,7 @@ export default function Analytics() {
       setEintraege(e)
     } else setEintraege([])
 
-    // VM-Berichte (nur für den ausgewählten User, nicht Subtree)
-    const vmIdFilter = userIds.length === 1 ? `user_id=eq.${userIds[0]}` : `user_id=in.(${userIds.join(',')})`
-    const vb = await dbQuery('vm_berichte', `${vmIdFilter}&select=*`) || []
+    const vb = await dbQuery('vm_berichte', `${idFilter}&select=*`) || []
     setVmBerichte(vb)
     if (vb.length > 0) {
       const ve = await dbQuery('vm_eintraege', `vm_bericht_id=in.(${vb.map((x:any)=>x.id).join(',')})&select=*`) || []
@@ -129,19 +125,26 @@ export default function Analytics() {
   const aktivitaetenZeilen = relevanteZeilen.filter(z => z.name !== 'Einheiten').map(z => z.name)
   const einheitenZeile = relevanteZeilen.find(z => z.name === 'Einheiten')?.name || null
 
-  // VM-Summen pro Bericht (matched nach monat+woche+jahr des Betreuers)
-  function getVmSumForBericht(bericht: any, field: 'mg_stattgefunden' | 'analysen_stattgefunden'): number {
+  // VM-Summe für eine Zeile: über vm_feld gemappt
+  function getVmSumForBericht(bericht: any, zeileName: string): number {
+    const zeile = formularZeilen.find(z => z.name === zeileName)
+    if (!zeile?.vm_feld) return 0
+    const vmFeld = zeile.vm_feld === 'mg' ? 'mg_stattgefunden' : zeile.vm_feld === 'analysen' ? 'analysen_stattgefunden' : null
+    if (!vmFeld) return 0
     const matching = filteredVmBerichte.filter(vb =>
-      vb.monat === bericht.monat && vb.woche === bericht.woche && vb.jahr === bericht.jahr && vb.user_id === bericht.user_id
+      vb.monat === bericht.monat && vb.woche === bericht.woche &&
+      vb.jahr === bericht.jahr && vb.user_id === bericht.user_id
     )
     return matching.reduce((sum, vb) => {
-      const entries = vmEintraege.filter(ve => ve.vm_bericht_id === vb.id)
-      return sum + entries.reduce((s, e) => s + (e[field] || 0), 0)
+      return sum + vmEintraege.filter(ve => ve.vm_bericht_id === vb.id).reduce((s, e) => s + (e[vmFeld] || 0), 0)
     }, 0)
   }
 
-  const MG_ZEILE = 'Marktgespräche'
-  const ANALYSEN_ZEILE = 'Analysen'
+  // Legendenname: wenn vm_feld gesetzt, " inkl. VM" anhängen
+  function legendLabel(zeileName: string): string {
+    const zeile = formularZeilen.find(z => z.name === zeileName)
+    return zeile?.vm_feld ? `${zeileName} inkl. VM` : zeileName
+  }
 
   const buildChartData = (zeilen: string[]) => filteredBerichte.map(b => {
     const be = eintraege.filter(e => e.bericht_id === b.id)
@@ -149,35 +152,20 @@ export default function Analytics() {
     const user = allUsers.find((u:any) => u.id === b.user_id)
     const name = `${b.monat.slice(0,3)} W${b.woche.replace('Woche ','')}${selectedUser==='all'?` (${user?.name?.split(' ')[0]||''})`:''}`
     const entry: any = { name }
-    zeilen.forEach(z => {
-      let val = sum(z)
-      if (z === MG_ZEILE) val += getVmSumForBericht(b, 'mg_stattgefunden')
-      if (z === ANALYSEN_ZEILE) val += getVmSumForBericht(b, 'analysen_stattgefunden')
-      entry[z] = val
-    })
+    zeilen.forEach(z => { entry[z] = sum(z) + getVmSumForBericht(b, z) })
     return entry
   })
 
-  // Legendennamen anpassen
-  function legendLabel(zeile: string): string {
-    if (zeile === MG_ZEILE) return 'Marktgespräche inkl. VM'
-    if (zeile === ANALYSEN_ZEILE) return 'Analysen inkl. VM'
-    return zeile
-  }
-
-  const aktivitaetenData = buildChartData(aktivitaetenZeilen)
-  const einheitenData = einheitenZeile ? buildChartData([einheitenZeile]) : []
-
-  const total = (zeile: string) => {
+  const total = (zeileName: string) => {
     const base = eintraege
       .filter(e => filteredBerichte.find(b => b.id === e.bericht_id))
-      .filter(e => e.zeile === zeile)
+      .filter(e => e.zeile === zeileName)
       .reduce((s, e:any) => s+(e.stattgefunden||0), 0)
-    const vmSum = zeile === MG_ZEILE
-      ? filteredVmBerichte.reduce((s, vb) => s + vmEintraege.filter(ve=>ve.vm_bericht_id===vb.id).reduce((ss,e)=>ss+(e.mg_stattgefunden||0),0), 0)
-      : zeile === ANALYSEN_ZEILE
-      ? filteredVmBerichte.reduce((s, vb) => s + vmEintraege.filter(ve=>ve.vm_bericht_id===vb.id).reduce((ss,e)=>ss+(e.analysen_stattgefunden||0),0), 0)
-      : 0
+    const zeile = formularZeilen.find(z => z.name === zeileName)
+    if (!zeile?.vm_feld) return base
+    const vmFeld = zeile.vm_feld === 'mg' ? 'mg_stattgefunden' : 'analysen_stattgefunden'
+    const vmSum = filteredVmBerichte.reduce((s, vb) =>
+      s + vmEintraege.filter(ve => ve.vm_bericht_id === vb.id).reduce((ss, e) => ss+(e[vmFeld]||0), 0), 0)
     return base + vmSum
   }
 
@@ -197,6 +185,9 @@ export default function Analytics() {
       </div>
     )
   }
+
+  const aktivitaetenData = buildChartData(aktivitaetenZeilen)
+  const einheitenData = einheitenZeile ? buildChartData([einheitenZeile]) : []
 
   return (
     <div className="min-h-screen bg-gray-50">
