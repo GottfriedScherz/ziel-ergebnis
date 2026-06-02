@@ -32,6 +32,7 @@ export default function Admin() {
   const [msgType, setMsgType] = useState<'ok'|'err'|'info'>('info')
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string|null>(null)
+  const [resendingId, setResendingId] = useState<string|null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -48,7 +49,6 @@ export default function Admin() {
         ;(z || []).forEach((row: FormZeile) => { edits[row.id] = row.name })
         setZeilenEdits(edits)
       })
-      // Auth Status laden
       const authRes = await fetch('/api/admin-zeile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,11 +69,7 @@ export default function Admin() {
   }
 
   async function adminApi(url: string, body: any) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     return res.json()
   }
 
@@ -92,6 +88,14 @@ export default function Admin() {
     setDeletingId(null)
     if (data.error) showMsg('Fehler: ' + data.error, 'err')
     else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
+  }
+
+  async function resendInvite(id: string, email: string, name: string) {
+    setResendingId(id)
+    const data = await adminApi('/api/resend-invite', { email, name })
+    setResendingId(null)
+    if (data.error) showMsg('Fehler: ' + data.error, 'err')
+    else showMsg(`Einladung erneut an ${email} gesendet ✓`, 'ok')
   }
 
   async function updateZeileProp(id: string, field: string, value: any) {
@@ -139,7 +143,7 @@ export default function Admin() {
     setCreating(true)
     const data = await adminApi('/api/create-user', { name: newName, email: newEmail, karrierestufe: newStufe, betreuer_id: newBetreuer || null })
     setCreating(false)
-    if (data.error) { showMsg('Fehler: ' + data.error, 'err') }
+    if (data.error) showMsg('Fehler: ' + data.error, 'err')
     else {
       showMsg('✓ Partner angelegt! Einladungsmail wurde verschickt.', 'ok')
       setNewName(''); setNewEmail(''); setNewStufe(1); setNewBetreuer('')
@@ -160,18 +164,17 @@ export default function Admin() {
         <div className="flex gap-2 mb-5">
           {(['users','form','neuer'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab===t ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-              {t === 'users' ? '👥 Nutzer' : t === 'form' ? '📋 Formular' : '➕ Neuer Partner'}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab===t?'bg-blue-600 text-white':'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+              {t==='users'?'👥 Nutzer':t==='form'?'📋 Formular':'➕ Neuer Partner'}
             </button>
           ))}
         </div>
 
         {msg && (
           <div className={`rounded-xl px-4 py-2 mb-4 text-sm font-medium ${
-            msgType === 'ok' ? 'bg-green-50 border border-green-200 text-green-700' :
-            msgType === 'err' ? 'bg-red-50 border border-red-200 text-red-700' :
-            'bg-blue-50 border border-blue-200 text-blue-700'
-          }`}>{msg}</div>
+            msgType==='ok'?'bg-green-50 border border-green-200 text-green-700':
+            msgType==='err'?'bg-red-50 border border-red-200 text-red-700':
+            'bg-blue-50 border border-blue-200 text-blue-700'}`}>{msg}</div>
         )}
 
         {tab === 'users' && (
@@ -188,6 +191,7 @@ export default function Admin() {
               <tbody>
                 {users.map(u => {
                   const auth = authStatus[u.id]
+                  const pendingInvite = auth && !auth.last_sign_in
                   return (
                     <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3">
@@ -215,19 +219,27 @@ export default function Admin() {
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        {auth ? (
-                          auth.last_sign_in ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
-                              ✓ Aktiv
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                              ⏳ Einladung offen
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-xs text-gray-300">—</span>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          {auth ? (
+                            auth.last_sign_in ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                                ✓ Aktiv
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                                ⏳ Einladung offen
+                              </span>
+                            )
+                          ) : <span className="text-xs text-gray-300">—</span>}
+                          {pendingInvite && (
+                            <button
+                              onClick={() => resendInvite(u.id, u.email, u.name)}
+                              disabled={resendingId === u.id}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40 text-left">
+                              {resendingId === u.id ? '...' : '↩ Zugang erneut senden'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={u.is_admin} onChange={e => updateUser(u.id, 'is_admin', e.target.checked)} className="w-4 h-4 accent-blue-600" />
@@ -281,10 +293,7 @@ export default function Admin() {
                         <input type="checkbox" checked={z.aktiv} onChange={e => updateZeileProp(z.id, 'aktiv', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => deleteZeile(z.id, z.name)}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium">
-                          Löschen
-                        </button>
+                        <button onClick={() => deleteZeile(z.id, z.name)} className="text-xs text-red-500 hover:text-red-700 font-medium">Löschen</button>
                       </td>
                     </tr>
                   ))}
