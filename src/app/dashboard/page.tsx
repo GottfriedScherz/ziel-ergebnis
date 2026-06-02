@@ -12,6 +12,7 @@ function UserAvatar({ url, name, size = 40 }: { url?: string | null; name: strin
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
+  const [allUsers, setAllUsers] = useState<any[]>([])
   const [berichte, setBerichte] = useState<any[]>([])
   const [vmBerichte, setVmBerichte] = useState<any[]>([])
   const [teamBerichte, setTeamBerichte] = useState<any[]>([])
@@ -29,6 +30,9 @@ export default function Dashboard() {
       if (!p) { router.push('/login'); return }
       setProfile(p)
       setAvatarUrl(p.avatar_url || null)
+
+      const allProfiles = await dbQuery('profiles', 'select=*') || []
+      setAllUsers(allProfiles)
 
       // Eigene Berichte
       dbQuery('berichte', `user_id=eq.${user.id}&select=*&order=updated_at.desc&limit=10`).then(d => setBerichte(d || []))
@@ -75,6 +79,11 @@ export default function Dashboard() {
   }
 
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
+
+  const allTeamEntries = [
+    ...teamBerichte.map(b => ({ ...b, _type: 'team' as const })),
+    ...vmBerichte.map(b => ({ ...b, _type: 'vm' as const })),
+  ].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,36 +141,31 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* VM-Berichte */}
-{vmBerichte.length > 0 && (
-  <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
-    <h3 className="font-semibold text-gray-700 mb-3">Wochenplanung VM's</h3>
-    <div className="space-y-2">
-      {vmBerichte.map(b => {
-        const label = `${b.monat} / ${b.woche} ${b.jahr}`
-        return (
-          <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
-            <Link href={`/vm-bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">{label}</span>
-              <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
-            </Link>
-            <button onClick={() => handleDelete(b.id, label, 'vm')} disabled={deletingId === b.id}
-              className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
-              {deletingId === b.id ? '...' : '×'}
-            </button>
-          </div>
-        )
-      })}
-    </div>
-  </div>
-)}
-
-        {/* Team-Berichte */}
-        {teamBerichte.length > 0 && (
+        {/* Team-Berichte + VM-Berichte zusammen */}
+        {allTeamEntries.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-700 mb-3">Team-Berichte</h3>
             <div className="space-y-2">
-              {teamBerichte.map(b => {
+              {allTeamEntries.map(b => {
+                if (b._type === 'vm') {
+                  const ownerName = allUsers.find((u: any) => u.id === b.user_id)?.name || ''
+                  const label = `${ownerName} — VM's ${b.monat} / ${b.woche} ${b.jahr}`
+                  return (
+                    <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
+                      <Link href={`/vm-bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">{ownerName} — VM's</span>
+                          <span className="text-xs text-gray-400 ml-2">{b.monat} / {b.woche} {b.jahr}</span>
+                        </div>
+                        <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
+                      </Link>
+                      <button onClick={() => handleDelete(b.id, label, 'vm')} disabled={deletingId === b.id}
+                        className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
+                        {deletingId === b.id ? '...' : '×'}
+                      </button>
+                    </div>
+                  )
+                }
                 const label = `${b.profiles?.name} — ${b.monat} / ${b.woche} ${b.jahr}`
                 return (
                   <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
