@@ -133,28 +133,28 @@ export default function Dashboard() {
         </div>
 
         {/* VM-Berichte */}
-        {vmBerichte.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
-            <h3 className="font-semibold text-gray-700 mb-3">Wochenplanung VM's</h3>
-            <div className="space-y-2">
-              {vmBerichte.map(b => {
-                const label = `${b.monat} / ${b.woche} ${b.jahr}`
-                return (
-                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
-                    <Link href={`/vm-bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">{label}</span>
-                      <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
-                    </Link>
-                    <button onClick={() => handleDelete(b.id, label, 'vm')} disabled={deletingId === b.id}
-                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
-                      {deletingId === b.id ? '...' : '×'}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
+{vmBerichte.length > 0 && (
+  <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
+    <h3 className="font-semibold text-gray-700 mb-3">Wochenplanung VM's</h3>
+    <div className="space-y-2">
+      {vmBerichte.map(b => {
+        const label = `${b.monat} / ${b.woche} ${b.jahr}`
+        return (
+          <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
+            <Link href={`/vm-bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">{label}</span>
+              <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
+            </Link>
+            <button onClick={() => handleDelete(b.id, label, 'vm')} disabled={deletingId === b.id}
+              className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
+              {deletingId === b.id ? '...' : '×'}
+            </button>
           </div>
-        )}
+        )
+      })}
+    </div>
+  </div>
+)}
 
         {/* Team-Berichte */}
         {teamBerichte.length > 0 && (
