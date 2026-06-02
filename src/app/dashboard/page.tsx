@@ -13,6 +13,7 @@ function UserAvatar({ url, name, size = 40 }: { url?: string | null; name: strin
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [berichte, setBerichte] = useState<any[]>([])
+  const [vmBerichte, setVmBerichte] = useState<any[]>([])
   const [teamBerichte, setTeamBerichte] = useState<any[]>([])
   const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
   const [deletingId, setDeletingId] = useState<string|null>(null)
@@ -23,15 +24,20 @@ export default function Dashboard() {
     const user = getUser()
     if (!user) { router.push('/login'); return }
 
-    dbQuery('profiles', `id=eq.${user.id}&select=*`).then(data => {
-      const prof = data?.[0]
-      if (!prof) { router.push('/login'); return }
-      setProfile(prof)
-      setAvatarUrl(prof.avatar_url || null)
+    dbQuery('profiles', `id=eq.${user.id}&select=*`).then(async prof => {
+      const p = prof?.[0]
+      if (!p) { router.push('/login'); return }
+      setProfile(p)
+      setAvatarUrl(p.avatar_url || null)
 
+      // Eigene Berichte
       dbQuery('berichte', `user_id=eq.${user.id}&select=*&order=updated_at.desc&limit=10`).then(d => setBerichte(d || []))
 
-      if (prof.is_admin) {
+      // Eigene VM-Berichte
+      dbQuery('vm_berichte', `user_id=eq.${user.id}&select=*&order=updated_at.desc&limit=10`).then(d => setVmBerichte(d || []))
+
+      // Team-Berichte
+      if (p.is_admin) {
         dbQuery('berichte', `user_id=neq.${user.id}&select=*,profiles(name)&order=updated_at.desc&limit=20`).then(d => setTeamBerichte(d || []))
       } else {
         dbQuery('profiles', `betreuer_id=eq.${user.id}&select=id`).then(teamMembers => {
@@ -46,21 +52,28 @@ export default function Dashboard() {
 
   function handleLogout() { logout(); router.push('/login') }
 
- async function handleDelete(id: string, label: string, isTeam = false) {
-  if (!confirm(`Bericht "${label}" wirklich löschen?`)) return
-  setDeletingId(id)
-  await fetch('/api/admin-zeile', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'delete_bericht', berichtId: id })
-  })
-  setDeletingId(null)
-  if (isTeam) {
-    setTeamBerichte(prev => prev.filter(b => b.id !== id))
-  } else {
-    setBerichte(prev => prev.filter(b => b.id !== id))
+  async function handleDelete(id: string, label: string, type: 'own' | 'vm' | 'team') {
+    if (!confirm(`Bericht "${label}" wirklich löschen?`)) return
+    setDeletingId(id)
+    if (type === 'vm') {
+      await fetch('/api/vm-bericht', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id })
+      })
+      setVmBerichte(prev => prev.filter(b => b.id !== id))
+    } else {
+      await fetch('/api/admin-zeile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_bericht', berichtId: id })
+      })
+      if (type === 'team') setTeamBerichte(prev => prev.filter(b => b.id !== id))
+      else setBerichte(prev => prev.filter(b => b.id !== id))
+    }
+    setDeletingId(null)
   }
-}
+
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">Laden...</div>
 
   return (
@@ -78,15 +91,24 @@ export default function Dashboard() {
           <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">Abmelden</button>
         </div>
       </nav>
+
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Willkommen, {profile.name.split(' ')[0]}!</h2>
             <p className="text-gray-500 text-sm">{profile.karrierestufe === 1 ? 'Planungsvariante VM' : profile.karrierestufe === 2 ? 'Planungsvariante VBA' : 'Planungsvariante HB'}</p>
           </div>
-          <Link href="/bericht" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">+ Neuer Wochenbericht</Link>
+          <div className="flex flex-col gap-2 items-end">
+            <Link href="/bericht" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+              + Neuer Wochenbericht
+            </Link>
+            <Link href="/vm-bericht" className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition">
+              + Wochenplanung VM's
+            </Link>
+          </div>
         </div>
 
+        {/* Eigene Berichte */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
           <h3 className="font-semibold text-gray-700 mb-3">Meine Berichte</h3>
           {berichte.length === 0 ? <p className="text-gray-400 text-sm">Noch keine Berichte vorhanden.</p> : (
@@ -99,9 +121,8 @@ export default function Dashboard() {
                       <span className="text-sm font-medium text-gray-700">{label}</span>
                       <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
                     </Link>
-                    <button onClick={() => handleDelete(b.id, label, false)} disabled={deletingId === b.id}
-                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1"
-                      title="Bericht löschen">
+                    <button onClick={() => handleDelete(b.id, label, 'own')} disabled={deletingId === b.id}
+                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
                       {deletingId === b.id ? '...' : '×'}
                     </button>
                   </div>
@@ -111,6 +132,31 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* VM-Berichte */}
+        {vmBerichte.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
+            <h3 className="font-semibold text-gray-700 mb-3">Wochenplanung VM's</h3>
+            <div className="space-y-2">
+              {vmBerichte.map(b => {
+                const label = `${b.monat} / ${b.woche} ${b.jahr}`
+                return (
+                  <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
+                    <Link href={`/vm-bericht?id=${b.id}`} className="flex-1 flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">{label}</span>
+                      <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
+                    </Link>
+                    <button onClick={() => handleDelete(b.id, label, 'vm')} disabled={deletingId === b.id}
+                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
+                      {deletingId === b.id ? '...' : '×'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Team-Berichte */}
         {teamBerichte.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-700 mb-3">Team-Berichte</h3>
@@ -126,9 +172,8 @@ export default function Dashboard() {
                       </div>
                       <span className="text-xs text-gray-400 mr-3">{new Date(b.updated_at).toLocaleDateString('de-AT')}</span>
                     </Link>
-                    <button onClick={() => handleDelete(b.id, label, true)} disabled={deletingId === b.id}
-                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1"
-                      title="Bericht löschen">
+                    <button onClick={() => handleDelete(b.id, label, 'team')} disabled={deletingId === b.id}
+                      className="text-gray-300 hover:text-red-500 transition disabled:opacity-40 text-lg leading-none ml-1">
                       {deletingId === b.id ? '...' : '×'}
                     </button>
                   </div>
