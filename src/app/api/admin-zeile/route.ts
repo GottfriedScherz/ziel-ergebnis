@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'insert') {
-    const { name, stufe_min, reihenfolge } = body
+    const { name, stufe_min, reihenfolge, vm_feld } = body
     const res = await fetch(`${SUPABASE_URL}/rest/v1/formular_zeilen`, {
       method: 'POST', headers,
-      body: JSON.stringify({ name, stufe_min, reihenfolge, aktiv: true })
+      body: JSON.stringify({ name, stufe_min, reihenfolge, aktiv: true, vm_feld: vm_feld || null })
     })
     const data = await res.json()
     if (!res.ok) return NextResponse.json({ error: data }, { status: 400 })
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
     if (rest.name !== undefined) updateBody.name = rest.name
     if (rest.stufe_min !== undefined) updateBody.stufe_min = rest.stufe_min
     if (rest.aktiv !== undefined) updateBody.aktiv = rest.aktiv
+    if (rest.vm_feld !== undefined) updateBody.vm_feld = rest.vm_feld
     const res = await fetch(`${SUPABASE_URL}/rest/v1/formular_zeilen?id=eq.${id}`, {
       method: 'PATCH', headers,
       body: JSON.stringify(updateBody)
