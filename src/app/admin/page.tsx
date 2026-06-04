@@ -239,9 +239,9 @@ export default function Admin() {
                           ) : <span className="text-xs text-gray-300">—</span>}
                           {pendingInvite && (
                             <button onClick={() => resendInvite(u.id, u.email, u.name)} disabled={resendingId === u.id}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40 text-left">
-                              {resendingId === u.id ? '...' : '↩ Zugang erneut senden'}
-                            </button>
+  className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40 text-left">
+  {resendingId === u.id ? '...' : '↩ Zugang erneut senden'}
+</button>
                           )}
                         </div>
                       </td>
