@@ -201,7 +201,6 @@ export default function Admin() {
               <tbody>
                 {users.map(u => {
                   const auth = authStatus[u.id]
-                  const pendingInvite = auth && !auth.last_sign_in
                   return (
                     <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3">
@@ -237,11 +236,10 @@ export default function Admin() {
                               <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">⏳ Einladung offen</span>
                             )
                           ) : <span className="text-xs text-gray-300">—</span>}
-                            <button onClick={() => resendInvite(u.id, u.email, u.name)} disabled={resendingId === u.id}
-  className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40 text-left">
-  {resendingId === u.id ? '...' : '↩ Zugang erneut senden'}
-</button>
-                          )}
+                          <button onClick={() => resendInvite(u.id, u.email, u.name)} disabled={resendingId === u.id}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40 text-left">
+                            {resendingId === u.id ? '...' : '↩ Zugang erneut senden'}
+                          </button>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -274,8 +272,8 @@ export default function Admin() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Zeile</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sichtbar ab</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-  <span title="Wird dem Betreuer in folgender Kategorie angerechnet" className="cursor-help border-b border-dotted border-gray-400">VM-Feld</span>
-</th>
+                    <span title="Wird dem Betreuer in folgender Kategorie angerechnet" className="cursor-help border-b border-dotted border-gray-400">VM-Feld</span>
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Aktiv</th>
                   <th className="px-4 py-3" />
                 </tr></thead>
