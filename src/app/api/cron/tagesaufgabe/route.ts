@@ -27,26 +27,30 @@ async function sendEmails() {
         'Authorization': `Bearer ${RESEND_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Deine heutigen TOP 3 <noreply@finanziellfrei.at>',
+        from: 'Ziel & Ergebnis <noreply@finanziellfrei.at>',
         to: user.email,
-        subject: `☀️ Guten Morgen ${user.name.split(' ')[0]} – Was sind heute Deine 3 wichtigsten Aufgaben?`,
+        subject: `☀️ ${user.name}, was bringt Dich heute Deinem Ziel näher?`,
         html: `
-          <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
-            <h2 style="color: #1a1a1a;">Guten Morgen, ${user.name.split(' ')[0]}! ☀️</h2>
-            <p style="color: #444; font-size: 16px; line-height: 1.6; font-weight: 500;">
-              Was sind heute Deine 3 wichtigsten Aufgaben um Deine langfristigen Ziele zu erreichen?
-            </p>
-            <div style="background: #f9f8f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <p style="color: #888; font-size: 14px; margin: 0 0 12px;">Heute ist ${heute}. Fokussiere Dich auf das Wesentliche.</p>
-              <ol style="color: #444; font-size: 15px; line-height: 2; margin: 0; padding-left: 20px;">
+          <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1a1a1a;">
+            
+            <h2 style="font-size: 20px; margin: 0 0 8px;">Guten Morgen, ${user.name}! ☀️</h2>
+            <p style="font-size: 13px; color: #888; margin: 0 0 24px;">Heute ist ${heute}.</p>
+
+            <p style="font-size: 16px; font-weight: 600; margin: 0 0 4px;">🎯 Deine heutigen TOP 3 Aufgaben</p>
+            <p style="font-size: 14px; color: #555; margin: 0 0 20px;">Aufschreiben · Ausführen · Abhaken.<br>3 Aufgaben erledigt = erfolgreicher Tag.</p>
+
+            <div style="background: #f9f8f5; border-radius: 10px; padding: 20px 24px; margin-bottom: 28px;">
+              <ol style="font-size: 15px; line-height: 2.4; margin: 0; padding-left: 20px; color: #333;">
                 <li>___________________________________</li>
                 <li>___________________________________</li>
                 <li>___________________________________</li>
               </ol>
             </div>
-            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">
+
+            <p style="font-size: 13px; color: #aaa; margin: 0;">
               Ziel & Ergebnis – Mein Ziel = mein Ergebnis. Auf mich ist Verlass.
             </p>
+
           </div>
         `
       })
