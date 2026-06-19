@@ -43,8 +43,8 @@ function PasswortSetzenContent() {
     const res = await fetch('/api/update-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        newPassword: password, 
+      body: JSON.stringify({
+        newPassword: password,
         accessToken: tokenType === 'supabase' ? token : null,
         customToken: tokenType === 'custom' ? token : null,
       })
@@ -59,7 +59,6 @@ function PasswortSetzenContent() {
       if (data.accessToken) localStorage.setItem('sb_access_token', data.accessToken)
       if (data.user) localStorage.setItem('sb_user', JSON.stringify(data.user))
       setSuccess(true)
-      setTimeout(() => router.push('/dashboard'), 2000)
     }
   }
 
@@ -89,10 +88,14 @@ function PasswortSetzenContent() {
 
   if (success) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="text-center">
+      <div className="text-center max-w-sm">
         <div className="text-4xl mb-4">✅</div>
         <h1 className="text-xl font-bold text-gray-800 mb-2">Passwort gesetzt!</h1>
-        <p className="text-gray-500 text-sm">Du wirst zum Dashboard weitergeleitet...</p>
+        <p className="text-gray-500 text-sm mb-6">Du kannst dich jetzt mit deinem neuen Passwort anmelden.</p>
+        <button onClick={() => router.push('/login')}
+          className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-blue-700 transition">
+          Zum Login
+        </button>
       </div>
     </div>
   )
