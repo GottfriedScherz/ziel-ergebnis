@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const RESEND_KEY = process.env.RESEND_API_KEY!
   const APP_URL = 'https://ziel-ergebnis.vercel.app'
 
-  // Prüfen ob E-Mail in profiles existiert
+  // 1. Prüfen ob E-Mail in profiles existiert
   const profileRes = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?email=eq.${encodeURIComponent(email)}&select=name,email`,
     {
@@ -21,14 +21,40 @@ export async function POST(req: NextRequest) {
   )
   const profiles = await profileRes.json()
 
+  // Kein Fehler zurückgeben (Sicherheit — kein Hinweis ob E-Mail existiert)
   if (!profiles || profiles.length === 0) {
-    // Kein Hinweis geben ob E-Mail existiert (Sicherheit)
     return NextResponse.json({ success: true })
   }
 
   const { name } = profiles[0]
 
-  // Neuen Link generieren
+  // 2. User-ID holen
+  const userRes = await fetch(
+    `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+    {
+      headers: {
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+      }
+    }
+  )
+  const userData = await userRes.json()
+  const userId = userData?.users?.[0]?.id
+  if (!userId) return NextResponse.json({ success: true })
+
+  // 3. Neues Zufallspasswort setzen → "entsperrt" den recovery-Token
+  const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!'
+  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+    },
+    body: JSON.stringify({ password: tempPassword })
+  })
+
+  // 4. Recovery-Link generieren
   const resetRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
     method: 'POST',
     headers: {
@@ -48,7 +74,7 @@ export async function POST(req: NextRequest) {
     ? resetData.action_link
     : `${APP_URL}/passwort-setzen`
 
-  // Mail senden
+  // 5. Mail senden
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
