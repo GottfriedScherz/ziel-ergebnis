@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json()
@@ -12,69 +13,32 @@ export async function POST(req: NextRequest) {
   // 1. Prüfen ob E-Mail in profiles existiert
   const profileRes = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?email=eq.${encodeURIComponent(email)}&select=name,email`,
-    {
-      headers: {
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-      }
-    }
+    { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
   )
   const profiles = await profileRes.json()
-
-  // Kein Fehler zurückgeben (Sicherheit — kein Hinweis ob E-Mail existiert)
-  if (!profiles || profiles.length === 0) {
-    return NextResponse.json({ success: true })
-  }
+  if (!profiles || profiles.length === 0) return NextResponse.json({ success: true })
 
   const { name } = profiles[0]
 
-  // 2. User-ID holen
-  const userRes = await fetch(
-    `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-    {
-      headers: {
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-      }
-    }
-  )
-  const userData = await userRes.json()
-  const userId = userData?.users?.[0]?.id
-  if (!userId) return NextResponse.json({ success: true })
+  // 2. Eigenen Token generieren (7 Tage gültig)
+  const token = crypto.randomBytes(32).toString('hex')
+  const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // 3. Neues Zufallspasswort setzen → "entsperrt" den recovery-Token
-  const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!'
-  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
-    },
-    body: JSON.stringify({ password: tempPassword })
-  })
-
-  // 4. Recovery-Link generieren
-  const resetRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+  await fetch(`${SUPABASE_URL}/rest/v1/reset_tokens`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': SERVICE_KEY,
       'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Prefer': 'return=minimal',
     },
-    body: JSON.stringify({
-      type: 'recovery',
-      email,
-      redirect_to: `${APP_URL}/passwort-setzen`
-    })
+    body: JSON.stringify({ email, token, expires_at })
   })
 
-  const resetData = await resetRes.json()
-  const resetLink = resetRes.ok && resetData.action_link
-    ? resetData.action_link
-    : `${APP_URL}/passwort-setzen`
+  // 3. Link zusammenbauen
+  const resetLink = `${APP_URL}/passwort-setzen?token=${token}`
 
-  // 5. Mail senden
+  // 4. Mail senden
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -97,6 +61,7 @@ export async function POST(req: NextRequest) {
           </a>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
           <p style="color: #aaa; font-size: 12px;">
+            Der Link ist 7 Tage gültig.<br>
             Falls du diesen Link nicht angefordert hast, kannst du diese E-Mail ignorieren.<br>
             <strong>Ziel & Ergebnis</strong> – Mein Ziel = mein Ergebnis. Auf mich ist Verlass.
           </p>
