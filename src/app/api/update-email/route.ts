@@ -58,28 +58,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ used: true })
     })
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-      },
-      body: JSON.stringify({ email: resetToken.email, password: newPassword })
-    })
-
-    const loginData = await loginRes.json()
-
-    if (!loginRes.ok)
-      return NextResponse.json({ error: 'Passwort gesetzt, aber Login fehlgeschlagen.' }, { status: 400 })
-
-    return NextResponse.json({
-      success: true,
-      accessToken: loginData.access_token,
-      user: { id: loginData.user?.id, email: loginData.user?.email }
-    })
+    return NextResponse.json({ success: true })
   }
 
   // Supabase Token Flow (bestehend)
