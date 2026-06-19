@@ -9,6 +9,7 @@ function PasswortSetzenContent() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [token, setToken] = useState<string | null>(null)
+  const [tokenType, setTokenType] = useState<'supabase' | 'custom' | null>(null)
   const [checking, setChecking] = useState(true)
   const router = useRouter()
 
@@ -18,20 +19,14 @@ function PasswortSetzenContent() {
     const queryParams = new URLSearchParams(window.location.search)
 
     const accessToken = hashParams.get('access_token') || queryParams.get('access_token')
-    const code = queryParams.get('code')
+    const customToken = queryParams.get('token')
 
-    console.log('Hash:', hash)
-    console.log('Query:', window.location.search)
-    console.log('Access token:', accessToken)
-    console.log('Code:', code)
-
-    if (accessToken) {
+    if (customToken) {
+      setToken(customToken)
+      setTokenType('custom')
+    } else if (accessToken) {
       setToken(accessToken)
-    } else if (code) {
-      setToken(code)
-    } else {
-      const queryToken = queryParams.get('token')
-      if (queryToken) setToken(queryToken)
+      setTokenType('supabase')
     }
     setChecking(false)
   }, [])
@@ -40,7 +35,7 @@ function PasswortSetzenContent() {
     e.preventDefault()
     if (password !== confirm) { setError('Passwörter stimmen nicht überein.'); return }
     if (password.length < 6) { setError('Passwort muss mindestens 6 Zeichen haben.'); return }
-    if (!token) { setError('Kein gültiger Token. Bitte den Link aus der E-Mail erneut öffnen.'); return }
+    if (!token) { setError('Kein gültiger Token.'); return }
 
     setLoading(true)
     setError('')
@@ -48,7 +43,11 @@ function PasswortSetzenContent() {
     const res = await fetch('/api/update-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newPassword: password, accessToken: token })
+      body: JSON.stringify({ 
+        newPassword: password, 
+        accessToken: tokenType === 'supabase' ? token : null,
+        customToken: tokenType === 'custom' ? token : null,
+      })
     })
 
     const data = await res.json()
@@ -57,7 +56,8 @@ function PasswortSetzenContent() {
     if (data.error) {
       setError(data.error)
     } else {
-      localStorage.setItem('sb_access_token', token)
+      if (data.accessToken) localStorage.setItem('sb_access_token', data.accessToken)
+      if (data.user) localStorage.setItem('sb_user', JSON.stringify(data.user))
       setSuccess(true)
       setTimeout(() => router.push('/dashboard'), 2000)
     }
