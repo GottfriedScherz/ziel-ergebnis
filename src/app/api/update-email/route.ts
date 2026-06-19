@@ -70,31 +70,32 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    // 5. Einloggen
-    const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-      },
-      body: JSON.stringify({ email: resetToken.email, password: newPassword })
-    })
+  // 5. Kurz warten dann einloggen
+await new Promise(resolve => setTimeout(resolve, 1000))
 
-    const loginData = await loginRes.json()
-    console.log('LOGIN STATUS:', loginRes.status)
-    console.log('LOGIN DATA:', JSON.stringify(loginData))
+const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': SERVICE_KEY,
+    'Authorization': `Bearer ${SERVICE_KEY}`,
+  },
+  body: JSON.stringify({ email: resetToken.email, password: newPassword })
+})
 
-    if (!loginRes.ok) {
-      return NextResponse.json({ error: 'Passwort gesetzt, aber Login fehlgeschlagen.' }, { status: 400 })
-    }
+const loginData = await loginRes.json()
+console.log('LOGIN STATUS:', loginRes.status)
+console.log('LOGIN DATA:', JSON.stringify(loginData))
 
-    return NextResponse.json({
-      success: true,
-      accessToken: loginData.access_token,
-      user: { id: loginData.user?.id, email: loginData.user?.email }
-    })
-  }
+if (!loginRes.ok) {
+  return NextResponse.json({ error: 'Passwort gesetzt, aber Login fehlgeschlagen.' }, { status: 400 })
+}
+
+return NextResponse.json({
+  success: true,
+  accessToken: loginData.access_token,
+  user: { id: loginData.user?.id, email: loginData.user?.email }
+})
 
   // Supabase Token Flow (bestehend — unverändert)
   if (!accessToken) return NextResponse.json({ error: 'Nicht eingeloggt.' }, { status: 401 })
