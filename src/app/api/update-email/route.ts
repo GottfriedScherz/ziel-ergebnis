@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    // 5. Einloggen um Token für localStorage zu holen
+    // 5. Einloggen
 const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
   method: 'POST',
   headers: {
@@ -81,19 +81,19 @@ const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`
   body: JSON.stringify({ email: resetToken.email, password: newPassword })
 })
 
-    const loginData = await loginRes.json()
+const loginData = await loginRes.json()
+console.log('LOGIN STATUS:', loginRes.status)
+console.log('LOGIN DATA:', JSON.stringify(loginData))
 
-    if (!loginRes.ok) {
-      return NextResponse.json({ error: 'Passwort gesetzt, aber Login fehlgeschlagen.' }, { status: 400 })
-    }
+if (!loginRes.ok) {
+  return NextResponse.json({ error: 'Passwort gesetzt, aber Login fehlgeschlagen.' }, { status: 400 })
+}
 
-    return NextResponse.json({
-      success: true,
-      accessToken: loginData.access_token,
-      user: { id: loginData.user?.id, email: loginData.user?.email }
-    })
-  }
-
+return NextResponse.json({
+  success: true,
+  accessToken: loginData.access_token,
+  user: { id: loginData.user?.id, email: loginData.user?.email }
+})
   // Supabase Token Flow (bestehend — unverändert)
   if (!accessToken) return NextResponse.json({ error: 'Nicht eingeloggt.' }, { status: 401 })
 
