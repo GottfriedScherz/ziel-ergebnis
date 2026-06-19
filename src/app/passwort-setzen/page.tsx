@@ -72,11 +72,17 @@ function PasswortSetzenContent() {
       <div className="text-center max-w-sm">
         <div className="text-4xl mb-4">⚠️</div>
         <h1 className="text-xl font-bold text-gray-800 mb-2">Link ungültig</h1>
-        <p className="text-gray-500 text-sm mb-4">Der Link ist abgelaufen oder ungültig. Bitte deinen Betreuer um eine neue Einladung.</p>
-        <button onClick={() => router.push('/login')}
-          className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-blue-700 transition">
-          Zum Login
-        </button>
+        <p className="text-gray-500 text-sm mb-6">Der Link ist abgelaufen oder ungültig.</p>
+        <div className="flex flex-col gap-3">
+          <button onClick={() => router.push('/zugang-anfordern')}
+            className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-blue-700 transition">
+            Neuen Zugangslink anfordern
+          </button>
+          <button onClick={() => router.push('/login')}
+            className="text-gray-400 text-sm hover:text-gray-600 transition">
+            Zum Login
+          </button>
+        </div>
       </div>
     </div>
   )
