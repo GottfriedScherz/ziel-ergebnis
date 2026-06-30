@@ -89,13 +89,18 @@ export default function Admin() {
   }
 
   async function deleteUser(id: string, name: string) {
-    if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
-    setDeletingId(id)
-    const data = await adminApi('/api/delete-user', { userId: id })
-    setDeletingId(null)
-    if (data.error) showMsg('Fehler: ' + data.error, 'err')
-    else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
+  const hatUnterstruktur = users.some(u => u.betreuer_id === id)
+  if (hatUnterstruktur) {
+    showMsg(`"${name}" kann nicht gelöscht werden: Bitte zuerst die betreuten Partner einem anderen Betreuer zuordnen.`, 'err')
+    return
   }
+  if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
+  setDeletingId(id)
+  const data = await adminApi('/api/delete-user', { userId: id })
+  setDeletingId(null)
+  if (data.error) showMsg('Fehler: ' + data.error, 'err')
+  else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
+}
 
   async function resendInvite(id: string, email: string, name: string) {
     setResendingId(id)
