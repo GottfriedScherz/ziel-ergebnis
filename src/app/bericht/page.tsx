@@ -41,6 +41,22 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
 }
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 
+function getCurrentWeekValue(): { monat: string, woche: string } {
+  const today = new Date()
+  const monat = MONATE[today.getMonth()]
+  const opts = getWeekOptions(monat)
+  const match = opts.find(w => {
+    const [startStr, endStr] = w.label.split(' – ')
+    const [sd, sm] = startStr.split('.').map(Number)
+    const [ed, em] = endStr.split('.').map(Number)
+    const year = today.getFullYear()
+    const start = new Date(year, sm - 1, sd)
+    const end = new Date(year, em - 1, ed, 23, 59, 59)
+    return today >= start && today <= end
+  })
+  return { monat, woche: match ? match.value : (opts[0]?.value || 'Woche 1') }
+}
+
 const PRINT_STYLES = `
 @media print {
   @page { size: A4 landscape; margin: 8mm; }
@@ -90,6 +106,7 @@ function BerichtContent() {
   const [ownerName, setOwnerName] = useState('')
   const [ownerAvatarUrl, setOwnerAvatarUrl] = useState<string|null>(null)
   const [myAvatarUrl, setMyAvatarUrl] = useState<string|null>(null)
+  const [duplicateError, setDuplicateError] = useState('')
 
   useEffect(() => {
     if (!getToken()) { router.push('/login'); return }
@@ -129,7 +146,10 @@ function BerichtContent() {
           setCells(c)
         }
       } else {
-        // Neuer Bericht: Zeilen nach eigenem Profil
+        // Neuer Bericht: aktuelle Woche vorauswählen
+        const current = getCurrentWeekValue()
+        setMonat(current.monat)
+        setWoche(current.woche)
         const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
         setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
       }
@@ -143,6 +163,7 @@ function BerichtContent() {
 
   async function handleSave() {
     if (!profile || readonly) return
+    setDuplicateError('')
     setSaving(true)
     const jahr = new Date().getFullYear()
     const berichtData = {
@@ -164,8 +185,9 @@ function BerichtContent() {
     } else {
       const existing = await dbQuery('berichte', `user_id=eq.${profile.id}&monat=eq.${monat}&woche=eq.${woche}&jahr=eq.${jahr}`)
       if (existing?.[0]) {
-        bid = existing[0].id
-        await dbUpdate('berichte', `id=eq.${bid}`, berichtData)
+        setSaving(false)
+        setDuplicateError('Für diesen Zeitraum existiert bereits ein Bericht. Bitte im Dashboard den gewünschten Bericht aktualisieren.')
+        return
       } else {
         const res = await dbInsert('berichte', berichtData)
         bid = res?.[0]?.id
@@ -210,6 +232,11 @@ function BerichtContent() {
         {readonly && ownerName && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 mb-4 text-sm text-blue-700 no-print">
             Bericht von <strong>{ownerName}</strong> — Nur-Lesen-Ansicht
+          </div>
+        )}
+        {duplicateError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-4 text-sm text-amber-700 no-print">
+            {duplicateError}
           </div>
         )}
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4">
