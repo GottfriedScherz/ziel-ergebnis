@@ -36,6 +36,22 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
   return weeks
 }
 
+function getCurrentWeekValue(): { monat: string, woche: string } {
+  const today = new Date()
+  const monat = MONATE[today.getMonth()]
+  const opts = getWeekOptions(monat)
+  const match = opts.find(w => {
+    const [startStr, endStr] = w.label.split(' – ')
+    const [sd, sm] = startStr.split('.').map(Number)
+    const [ed, em] = endStr.split('.').map(Number)
+    const year = today.getFullYear()
+    const start = new Date(year, sm - 1, sd)
+    const end = new Date(year, em - 1, ed, 23, 59, 59)
+    return today >= start && today <= end
+  })
+  return { monat, woche: match ? match.value : (opts[0]?.value || 'Woche 1') }
+}
+
 function VmBerichtContent() {
   const router = useRouter()
   const params = useSearchParams()
@@ -47,6 +63,7 @@ function VmBerichtContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [currentBerichtId, setCurrentBerichtId] = useState<string|null>(null)
+  const [duplicateError, setDuplicateError] = useState('')
   const [rows, setRows] = useState([
     { name: '', mg_geplant: 0, mg_stattgefunden: 0, analysen_geplant: 0, analysen_stattgefunden: 0, ansprache_geplant: 0, ansprache_stattgefunden: 0 }
   ])
@@ -58,10 +75,6 @@ function VmBerichtContent() {
       const prof = data?.[0]
       if (!prof) { router.push('/login'); return }
       setProfile(prof)
-
-      // Aktuelle Woche vorauswählen
-      const opts = getWeekOptions(MONATE[new Date().getMonth()])
-      if (opts.length > 0) setWoche(opts[0].value)
 
       // Bestehenden Bericht laden wenn ?id=
       if (berichtId) {
@@ -81,21 +94,38 @@ function VmBerichtContent() {
             ansprache_stattgefunden: x.ansprache_stattgefunden || 0,
           })))
         }
+      } else {
+        // Neuer Bericht: aktuelle Woche vorauswählen
+        const current = getCurrentWeekValue()
+        setMonat(current.monat)
+        setWoche(current.woche)
       }
     })
   }, [router, berichtId])
 
   async function saveBericht() {
     if (!profile) return
+    setDuplicateError('')
     setSaving(true)
+    const jahr = new Date().getFullYear()
+
+    // Duplikat-Check nur bei neuen Berichten
+    if (!currentBerichtId) {
+      const existing = await dbQuery('vm_berichte', `user_id=eq.${profile.id}&monat=eq.${monat}&woche=eq.${woche}&jahr=eq.${jahr}`)
+      if (existing?.[0]) {
+        setSaving(false)
+        setDuplicateError('Für diesen Zeitraum existiert bereits ein Bericht. Bitte im Dashboard den gewünschten Bericht aktualisieren.')
+        return
+      }
+    }
+
     const res = await fetch('/api/vm-bericht', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'save',
         user_id: profile.id,
-        monat, woche,
-        jahr: new Date().getFullYear(),
+        monat, woche, jahr,
         eintraege: rows.filter(r => r.name.trim()),
         existingId: currentBerichtId
       })
@@ -134,6 +164,12 @@ function VmBerichtContent() {
       </nav>
       <div className="max-w-2xl mx-auto px-4 py-5">
 
+        {duplicateError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-4 text-sm text-amber-700">
+            {duplicateError}
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4">
           <div className="flex gap-3 flex-wrap items-end">
             <div className="flex flex-col gap-1 flex-1 min-w-48">
@@ -165,41 +201,41 @@ function VmBerichtContent() {
             <h3 className="font-semibold text-gray-700 text-sm">VM-Gespräche dieser Woche</h3>
           </div>
           <div className="overflow-x-auto">
-  <table className="w-full text-sm" style={{tableLayout: 'fixed'}}>
-    <thead>
-      <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-        <th className="px-3 py-2 text-left" style={{width: '28%'}}>Name VM</th>
-        <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Gepl.</th>
-        <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Stattgef.</th>
-        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Gepl.</th>
-        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Stattgef.</th>
-        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Gepl.</th>
-        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Stattgef.</th>
-        <th className="px-1 py-2" style={{width: '24px'}} />
-      </tr>
-    </thead>
-    <tbody>
-      {rows.map((r, i) => (
-        <tr key={i} className="border-t border-gray-100">
-          <td className="px-2 py-1.5">
-            <input value={r.name} onChange={e => updateRow(i, 'name', e.target.value)}
-              placeholder="Name..."
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </td>
-          {(['mg_geplant','mg_stattgefunden','analysen_geplant','analysen_stattgefunden','ansprache_geplant','ansprache_stattgefunden'] as const).map(field => (
-            <td key={field} className="px-1 py-1.5 text-center">
-              <input type="number" min={0} value={r[field]} onChange={e => updateRow(i, field, e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </td>
-          ))}
-          <td className="px-1 py-1.5">
-            <button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition text-lg leading-none">×</button>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+            <table className="w-full text-sm" style={{tableLayout: 'fixed'}}>
+              <thead>
+                <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                  <th className="px-3 py-2 text-left" style={{width: '28%'}}>Name VM</th>
+                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Gepl.</th>
+                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Stattgef.</th>
+                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Gepl.</th>
+                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Stattgef.</th>
+                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Gepl.</th>
+                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Stattgef.</th>
+                  <th className="px-1 py-2" style={{width: '24px'}} />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} className="border-t border-gray-100">
+                    <td className="px-2 py-1.5">
+                      <input value={r.name} onChange={e => updateRow(i, 'name', e.target.value)}
+                        placeholder="Name..."
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </td>
+                    {(['mg_geplant','mg_stattgefunden','analysen_geplant','analysen_stattgefunden','ansprache_geplant','ansprache_stattgefunden'] as const).map(field => (
+                      <td key={field} className="px-1 py-1.5 text-center">
+                        <input type="number" min={0} value={r[field]} onChange={e => updateRow(i, field, e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </td>
+                    ))}
+                    <td className="px-1 py-1.5">
+                      <button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition text-lg leading-none">×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="px-4 py-3 border-t border-gray-100">
             <button onClick={addRow} className="text-sm text-blue-600 font-medium hover:text-blue-800 transition">+ Zeile hinzufügen</button>
           </div>
