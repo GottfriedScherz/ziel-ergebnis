@@ -125,11 +125,17 @@ export default function Analytics() {
   const aktivitaetenZeilen = relevanteZeilen.filter(z => z.name !== 'Einheiten').map(z => z.name)
   const einheitenZeile = relevanteZeilen.find(z => z.name === 'Einheiten')?.name || null
 
+  function vmFeldKey(vmFeld: string | null): string | null {
+    if (vmFeld === 'mg') return 'mg_stattgefunden'
+    if (vmFeld === 'analysen') return 'analysen_stattgefunden'
+    if (vmFeld === 'ansprache') return 'ansprache_stattgefunden'
+    return null
+  }
+
   // VM-Summe für eine Zeile: über vm_feld gemappt
   function getVmSumForBericht(bericht: any, zeileName: string): number {
     const zeile = formularZeilen.find(z => z.name === zeileName)
-    if (!zeile?.vm_feld) return 0
-    const vmFeld = zeile.vm_feld === 'mg' ? 'mg_stattgefunden' : zeile.vm_feld === 'analysen' ? 'analysen_stattgefunden' : null
+    const vmFeld = vmFeldKey(zeile?.vm_feld || null)
     if (!vmFeld) return 0
     const matching = filteredVmBerichte.filter(vb =>
       vb.monat === bericht.monat && vb.woche === bericht.woche &&
@@ -162,8 +168,8 @@ export default function Analytics() {
       .filter(e => e.zeile === zeileName)
       .reduce((s, e:any) => s+(e.stattgefunden||0), 0)
     const zeile = formularZeilen.find(z => z.name === zeileName)
-    if (!zeile?.vm_feld) return base
-    const vmFeld = zeile.vm_feld === 'mg' ? 'mg_stattgefunden' : 'analysen_stattgefunden'
+    const vmFeld = vmFeldKey(zeile?.vm_feld || null)
+    if (!vmFeld) return base
     const vmSum = filteredVmBerichte.reduce((s, vb) =>
       s + vmEintraege.filter(ve => ve.vm_bericht_id === vb.id).reduce((ss, e) => ss+(e[vmFeld]||0), 0), 0)
     return base + vmSum
