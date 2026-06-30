@@ -18,6 +18,7 @@ const VM_FELD_OPTIONS = [
   { value: '', label: '— kein VM-Feld —' },
   { value: 'mg', label: 'Marktgespräche (VM)' },
   { value: 'analysen', label: 'Analysen (VM)' },
+  { value: 'ansprache', label: 'Ansprache auf Beruf / Einladungen (VM)' },
 ]
 
 export default function Admin() {
@@ -89,18 +90,18 @@ export default function Admin() {
   }
 
   async function deleteUser(id: string, name: string) {
-  const hatUnterstruktur = users.some(u => u.betreuer_id === id)
-  if (hatUnterstruktur) {
-    showMsg(`"${name}" kann nicht gelöscht werden: Bitte zuerst die betreuten Partner einem anderen Betreuer zuordnen.`, 'err')
-    return
+    const hatUnterstruktur = users.some(u => u.betreuer_id === id)
+    if (hatUnterstruktur) {
+      showMsg(`"${name}" kann nicht gelöscht werden: Bitte zuerst die betreuten Partner einem anderen Betreuer zuordnen.`, 'err')
+      return
+    }
+    if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
+    setDeletingId(id)
+    const data = await adminApi('/api/delete-user', { userId: id })
+    setDeletingId(null)
+    if (data.error) showMsg('Fehler: ' + data.error, 'err')
+    else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
   }
-  if (!confirm(`Wirklich "${name}" löschen? Alle Berichte werden ebenfalls gelöscht!`)) return
-  setDeletingId(id)
-  const data = await adminApi('/api/delete-user', { userId: id })
-  setDeletingId(null)
-  if (data.error) showMsg('Fehler: ' + data.error, 'err')
-  else { setUsers(prev => prev.filter(u => u.id !== id)); showMsg(`${name} wurde gelöscht.`, 'ok') }
-}
 
   async function resendInvite(id: string, email: string, name: string) {
     setResendingId(id)
