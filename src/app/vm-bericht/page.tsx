@@ -173,8 +173,8 @@ function VmBerichtContent() {
                   <th className="px-3 py-2 text-center">MG stattgef.</th>
                   <th className="px-3 py-2 text-center">Analyse gepl.</th>
                   <th className="px-3 py-2 text-center">Analyse stattgef.</th>
-                  <th className="px-3 py-2 text-center">Ansprache gepl.</th>
-                  <th className="px-3 py-2 text-center">Ansprache stattgef.</th>
+                 <th className="px-3 py-2 text-center">Einladung VIP/KG gepl.</th>
+                  <th className="px-3 py-2 text-center">Einladung VIP/KG stattgef.</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
