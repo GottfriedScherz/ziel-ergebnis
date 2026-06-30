@@ -165,41 +165,41 @@ function VmBerichtContent() {
             <h3 className="font-semibold text-gray-700 text-sm">VM-Gespräche dieser Woche</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                  <th className="px-3 py-2 text-left">Name VM</th>
-                  <th className="px-3 py-2 text-center">MG geplant</th>
-                  <th className="px-3 py-2 text-center">MG stattgef.</th>
-                  <th className="px-3 py-2 text-center">Analyse gepl.</th>
-                  <th className="px-3 py-2 text-center">Analyse stattgef.</th>
-                 <th className="px-3 py-2 text-center">Einladung VIP/KG gepl.</th>
-                  <th className="px-3 py-2 text-center">Einladung VIP/KG stattgef.</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={i} className="border-t border-gray-100">
-                    <td className="px-3 py-2">
-                      <input value={r.name} onChange={e => updateRow(i, 'name', e.target.value)}
-                        placeholder="Name..."
-                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </td>
-                    {(['mg_geplant','mg_stattgefunden','analysen_geplant','analysen_stattgefunden','ansprache_geplant','ansprache_stattgefunden'] as const).map(field => (
-                      <td key={field} className="px-3 py-2 text-center">
-                        <input type="number" min={0} value={r[field]} onChange={e => updateRow(i, field, e.target.value)}
-                          className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </td>
-                    ))}
-                    <td className="px-3 py-2">
-                      <button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition text-lg leading-none">×</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+  <table className="w-full text-sm" style={{tableLayout: 'fixed'}}>
+    <thead>
+      <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+        <th className="px-3 py-2 text-left" style={{width: '28%'}}>Name VM</th>
+        <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Gepl.</th>
+        <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Stattgef.</th>
+        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Gepl.</th>
+        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Stattgef.</th>
+        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Gepl.</th>
+        <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Stattgef.</th>
+        <th className="px-1 py-2" style={{width: '24px'}} />
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r, i) => (
+        <tr key={i} className="border-t border-gray-100">
+          <td className="px-2 py-1.5">
+            <input value={r.name} onChange={e => updateRow(i, 'name', e.target.value)}
+              placeholder="Name..."
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </td>
+          {(['mg_geplant','mg_stattgefunden','analysen_geplant','analysen_stattgefunden','ansprache_geplant','ansprache_stattgefunden'] as const).map(field => (
+            <td key={field} className="px-1 py-1.5 text-center">
+              <input type="number" min={0} value={r[field]} onChange={e => updateRow(i, field, e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </td>
+          ))}
+          <td className="px-1 py-1.5">
+            <button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition text-lg leading-none">×</button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
           <div className="px-4 py-3 border-t border-gray-100">
             <button onClick={addRow} className="text-sm text-blue-600 font-medium hover:text-blue-800 transition">+ Zeile hinzufügen</button>
           </div>
