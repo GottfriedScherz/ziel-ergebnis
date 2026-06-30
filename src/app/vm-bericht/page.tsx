@@ -48,7 +48,7 @@ function VmBerichtContent() {
   const [saved, setSaved] = useState(false)
   const [currentBerichtId, setCurrentBerichtId] = useState<string|null>(null)
   const [rows, setRows] = useState([
-    { name: '', mg_geplant: 0, mg_stattgefunden: 0, analysen_geplant: 0, analysen_stattgefunden: 0 }
+    { name: '', mg_geplant: 0, mg_stattgefunden: 0, analysen_geplant: 0, analysen_stattgefunden: 0, ansprache_geplant: 0, ansprache_stattgefunden: 0 }
   ])
 
   useEffect(() => {
@@ -77,6 +77,8 @@ function VmBerichtContent() {
             mg_stattgefunden: x.mg_stattgefunden || 0,
             analysen_geplant: x.analysen_geplant || 0,
             analysen_stattgefunden: x.analysen_stattgefunden || 0,
+            ansprache_geplant: x.ansprache_geplant || 0,
+            ansprache_stattgefunden: x.ansprache_stattgefunden || 0,
           })))
         }
       }
@@ -114,7 +116,7 @@ function VmBerichtContent() {
   }
 
   function addRow() {
-    setRows(prev => [...prev, { name: '', mg_geplant: 0, mg_stattgefunden: 0, analysen_geplant: 0, analysen_stattgefunden: 0 }])
+    setRows(prev => [...prev, { name: '', mg_geplant: 0, mg_stattgefunden: 0, analysen_geplant: 0, analysen_stattgefunden: 0, ansprache_geplant: 0, ansprache_stattgefunden: 0 }])
   }
 
   function removeRow(i: number) {
@@ -171,6 +173,8 @@ function VmBerichtContent() {
                   <th className="px-3 py-2 text-center">MG stattgef.</th>
                   <th className="px-3 py-2 text-center">Analyse gepl.</th>
                   <th className="px-3 py-2 text-center">Analyse stattgef.</th>
+                  <th className="px-3 py-2 text-center">Ansprache gepl.</th>
+                  <th className="px-3 py-2 text-center">Ansprache stattgef.</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -182,7 +186,7 @@ function VmBerichtContent() {
                         placeholder="Name..."
                         className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </td>
-                    {(['mg_geplant','mg_stattgefunden','analysen_geplant','analysen_stattgefunden'] as const).map(field => (
+                    {(['mg_geplant','mg_stattgefunden','analysen_geplant','analysen_stattgefunden','ansprache_geplant','ansprache_stattgefunden'] as const).map(field => (
                       <td key={field} className="px-3 py-2 text-center">
                         <input type="number" min={0} value={r[field]} onChange={e => updateRow(i, field, e.target.value)}
                           className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
