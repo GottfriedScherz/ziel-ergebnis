@@ -56,9 +56,15 @@ function PasswortSetzenContent() {
     if (data.error) {
       setError(data.error)
     } else {
-      if (data.accessToken) localStorage.setItem('sb_access_token', data.accessToken)
-      if (data.user) localStorage.setItem('sb_user', JSON.stringify(data.user))
-      setSuccess(true)
+     if (data.accessToken) {
+  localStorage.setItem('sb_access_token', data.accessToken)
+  if (data.refreshToken) localStorage.setItem('sb_refresh_token', data.refreshToken)
+  if (data.user) localStorage.setItem('sb_user', JSON.stringify(data.user))
+  // Direkt zum Dashboard wenn Login erfolgreich
+  router.push('/dashboard')
+  return
+}
+setSuccess(true)
     }
   }
 
