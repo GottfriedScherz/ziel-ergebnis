@@ -48,17 +48,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Fehler beim Setzen des Passworts.' }, { status: 400 })
 
     await fetch(`${SUPABASE_URL}/rest/v1/reset_tokens?token=eq.${customToken}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({ used: true })
-    })
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': SERVICE_KEY,
+    'Authorization': `Bearer ${SERVICE_KEY}`,
+    'Prefer': 'return=minimal',
+  },
+  body: JSON.stringify({ used: true })
+})
 
-    return NextResponse.json({ success: true })
+// Direkt einloggen nach Passwort-Setzen
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': ANON_KEY,
+    'Authorization': `Bearer ${ANON_KEY}`,
+  },
+  body: JSON.stringify({ email: resetToken.email, password: newPassword })
+})
+const loginData = await loginRes.json()
+if (loginRes.ok && loginData.access_token) {
+  return NextResponse.json({
+    success: true,
+    accessToken: loginData.access_token,
+    refreshToken: loginData.refresh_token,
+    user: loginData.user
+  })
+}
+return NextResponse.json({ success: true })
   }
 
   // Supabase Token Flow (bestehend)
