@@ -291,7 +291,7 @@ function BerichtContent() {
               <thead>
                 <tr>
                   <th className="sticky left-0 top-0 z-50 bg-gray-100 text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b border-r border-gray-200" style={{width:155,minWidth:155}}>Aktivität</th>
-                  {DAYS.map((d,i) => (
+                 {DAYS.map((d,i) => ['Ziel','Ergebnis'].map((lbl,j) => (
                     <th key={d} colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200" style={{width:108,background:isG(i)?'#c8e0aa':'#aacde8',color:isG(i)?'#27500A':'#0C447C'}}>{d}</th>
                   ))}
                 </tr>
