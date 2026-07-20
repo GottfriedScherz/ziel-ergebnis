@@ -204,13 +204,13 @@ function VmBerichtContent() {
             <table className="w-full text-sm" style={{tableLayout: 'fixed'}}>
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                  <th className="px-3 py-2 text-left" style={{width: '28%'}}>Name VM</th>
-                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Gepl.</th>
-                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Stattgef.</th>
-                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Gepl.</th>
-                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Stattgef.</th>
-                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Gepl.</th>
-                  <th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Stattgef.</th>
+                 <th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Ziel</th>
+<th className="px-2 py-2 text-center" style={{width: '12%'}}>MG<br/>Ergebnis</th>
+<th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Ziel</th>
+<th className="px-2 py-2 text-center" style={{width: '12%'}}>Analyse<br/>Ergebnis</th>
+<th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Ziel</th>
+<th className="px-2 py-2 text-center" style={{width: '12%'}}>Einl. VIP/KG<br/>Ergebnis</th>
+Das sind alle Stellen — Datenbank bleibt unverändert.
                   <th className="px-1 py-2" style={{width: '24px'}} />
                 </tr>
               </thead>
