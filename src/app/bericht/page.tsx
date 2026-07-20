@@ -289,13 +289,18 @@ function BerichtContent() {
           <div className="overflow-auto max-h-[520px]">
             <table className="border-collapse" style={{tableLayout:'fixed'}}>
               <thead>
-                <tr>
-                  <th className="sticky left-0 top-0 z-50 bg-gray-100 text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b border-r border-gray-200" style={{width:155,minWidth:155}}>Aktivität</th>
-                 {DAYS.map((d,i) => ['Ziel','Ergebnis'].map((lbl,j) => (
-                    <th key={d} colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200" style={{width:108,background:isG(i)?'#c8e0aa':'#aacde8',color:isG(i)?'#27500A':'#0C447C'}}>{d}</th>
-                  ))}
-                </tr>
-                <tr>
+               <tr>
+  <th className="sticky left-0 top-0 z-50 bg-gray-100 text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b border-r border-gray-200" style={{width:155,minWidth:155}}>Aktivität</th>
+  {DAYS.map((d,i) => (
+    <th key={d} colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200" style={{width:108,background:isG(i)?'#c8e0aa':'#aacde8',color:isG(i)?'#27500A':'#0C447C'}}>{d}</th>
+  ))}
+</tr>
+<tr>
+  <th className="sticky left-0 top-[37px] z-50 bg-gray-100 border-b border-r border-gray-200" style={{width:155,minWidth:155}} />
+  {DAYS.map((d,i) => ['Ziel','Ergebnis'].map((lbl,j) => (
+    <th key={`${d}-${j}`} className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200" style={{width:54,minWidth:54,background:isG(i)?(j===0?'#d8edbe':'#eaf3de'):(j===0?'#c5def2':'#ddeef9'),color:isG(i)?'#27500A':'#0C447C'}}>{lbl}</th>
+  )))}
+</tr>
                   <th className="sticky left-0 top-[37px] z-50 bg-gray-100 border-b border-r border-gray-200" style={{width:155,minWidth:155}} />
                   {DAYS.map((d,i) => ['Vereinbart','Stattgef.'].map((lbl,j) => (
                     <th key={`${d}-${j}`} className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200" style={{width:54,minWidth:54,background:isG(i)?(j===0?'#d8edbe':'#eaf3de'):(j===0?'#c5def2':'#ddeef9'),color:isG(i)?'#27500A':'#0C447C'}}>{lbl}</th>
