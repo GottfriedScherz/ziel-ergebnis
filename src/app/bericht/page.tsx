@@ -39,6 +39,7 @@ function getWeekOptions(monatName: string): {label: string, value: string}[] {
   }
   return weeks
 }
+
 const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 
 function getCurrentWeekValue(): { monat: string, woche: string } {
@@ -118,6 +119,7 @@ function BerichtContent() {
       setMyAvatarUrl(prof.avatar_url || null)
 
       if (berichtId) {
+        // Bestehenden Bericht laden
         const b = await dbQuery('berichte', `id=eq.${berichtId}&select=*,profiles(name,avatar_url,karrierestufe)`)
         if (b?.[0]) {
           const bericht = b[0]
@@ -130,7 +132,6 @@ function BerichtContent() {
           setOwnerName(bericht.profiles?.name || '')
           setOwnerAvatarUrl(bericht.profiles?.avatar_url || null)
 
-          // Zeilen nach Karrierestufe des Owners filtern (bei readonly), sonst nach eigenem Profil
           const stufe = readonly && bericht.profiles?.karrierestufe
             ? bericht.profiles.karrierestufe
             : prof.karrierestufe
@@ -146,12 +147,26 @@ function BerichtContent() {
           setCells(c)
         }
       } else {
-        // Neuer Bericht: aktuelle Woche vorauswählen
+        // Neuer Bericht: aktuelle Woche + letzten Bericht als Vorlage laden
         const current = getCurrentWeekValue()
         setMonat(current.monat)
         setWoche(current.woche)
         const z = await dbQuery('formular_zeilen', `aktiv=eq.true&order=reihenfolge`)
         setZeilen((z || []).filter((row: any) => row.stufe_min <= prof.karrierestufe))
+
+        // Letzten Bericht laden für Ziele + Ergebnis-Stand
+        const letzter = await dbQuery('berichte', `user_id=eq.${prof.id}&order=updated_at.desc&limit=1&select=*`)
+        if (letzter?.[0]) {
+          const l = letzter[0]
+          if (l.ee_jahr_ziel) setEeJahrZiel(String(l.ee_jahr_ziel))
+          if (l.ee_jahr_stand) setEeJahrStand(String(l.ee_jahr_stand))
+          if (l.ee_monat_ziel) setEeMonatZiel(String(l.ee_monat_ziel))
+          if (l.ee_monat_stand) setEeMonatStand(String(l.ee_monat_stand))
+          if (l.vip_jahr_ziel) setVipJahrZiel(String(l.vip_jahr_ziel))
+          if (l.vip_jahr_stand) setVipJahrStand(String(l.vip_jahr_stand))
+          if (l.vip_monat_ziel) setVipMonatZiel(String(l.vip_monat_ziel))
+          if (l.vip_monat_stand) setVipMonatStand(String(l.vip_monat_stand))
+        }
       }
     })
   }, [berichtId, router])
@@ -159,6 +174,14 @@ function BerichtContent() {
   function getCell(zeile: string, tag: string, type: 'v'|'s') { return cells[`${zeile}__${tag}__${type}`] ?? '' }
   function setCell(zeile: string, tag: string, type: 'v'|'s', val: string) {
     setCells((prev: any) => ({ ...prev, [`${zeile}__${tag}__${type}`]: val === '' ? '' : parseInt(val) || 0 }))
+  }
+
+  // Summenspalte berechnen
+  function getRowSum(zeile: string, type: 'v'|'s'): number {
+    return DAYS.reduce((sum, tag) => {
+      const val = cells[`${zeile}__${tag}__${type}`]
+      return sum + (val !== '' && val !== undefined ? parseInt(val) || 0 : 0)
+    }, 0)
   }
 
   async function handleSave() {
@@ -289,22 +312,20 @@ function BerichtContent() {
           <div className="overflow-auto max-h-[520px]">
             <table className="border-collapse" style={{tableLayout:'fixed'}}>
               <thead>
-               <tr>
-  <th className="sticky left-0 top-0 z-50 bg-gray-100 text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b border-r border-gray-200" style={{width:155,minWidth:155}}>Aktivität</th>
-  {DAYS.map((d,i) => (
-    <th key={d} colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200" style={{width:108,background:isG(i)?'#c8e0aa':'#aacde8',color:isG(i)?'#27500A':'#0C447C'}}>{d}</th>
-  ))}
-</tr>
-<tr>
-  <th className="sticky left-0 top-[37px] z-50 bg-gray-100 border-b border-r border-gray-200" style={{width:155,minWidth:155}} />
-  {DAYS.map((d,i) => ['Ziel','Ergebnis'].map((lbl,j) => (
-    <th key={`${d}-${j}`} className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200" style={{width:54,minWidth:54,background:isG(i)?(j===0?'#d8edbe':'#eaf3de'):(j===0?'#c5def2':'#ddeef9'),color:isG(i)?'#27500A':'#0C447C'}}>{lbl}</th>
-  )))}
-</tr>
+                <tr>
+                  <th className="sticky left-0 top-0 z-50 bg-gray-100 text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b border-r border-gray-200" style={{width:155,minWidth:155}}>Aktivität</th>
+                  {DAYS.map((d,i) => (
+                    <th key={d} colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200" style={{width:108,background:isG(i)?'#c8e0aa':'#aacde8',color:isG(i)?'#27500A':'#0C447C'}}>{d}</th>
+                  ))}
+                  <th colSpan={2} className="sticky top-0 z-30 text-center text-xs font-semibold py-2 border-b border-gray-200 border-l-2 border-l-gray-300" style={{width:108,background:'#e8e0f0',color:'#4c1d95'}}>Summe</th>
+                </tr>
+                <tr>
                   <th className="sticky left-0 top-[37px] z-50 bg-gray-100 border-b border-r border-gray-200" style={{width:155,minWidth:155}} />
-                  {DAYS.map((d,i) => ['Vereinbart','Stattgef.'].map((lbl,j) => (
+                  {DAYS.map((d,i) => ['Ziel','Ergebnis'].map((lbl,j) => (
                     <th key={`${d}-${j}`} className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200" style={{width:54,minWidth:54,background:isG(i)?(j===0?'#d8edbe':'#eaf3de'):(j===0?'#c5def2':'#ddeef9'),color:isG(i)?'#27500A':'#0C447C'}}>{lbl}</th>
                   )))}
+                  <th className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200 border-l-2 border-l-gray-300" style={{width:54,minWidth:54,background:'#ede9f5',color:'#4c1d95'}}>Ziel</th>
+                  <th className="sticky top-[37px] z-30 text-center text-[10px] font-semibold py-1 border-b border-gray-200" style={{width:54,minWidth:54,background:'#f3f0f9',color:'#4c1d95'}}>Ergebnis</th>
                 </tr>
               </thead>
               <tbody>
@@ -319,6 +340,16 @@ function BerichtContent() {
                           className="w-full text-center text-sm py-1.5 bg-transparent border-none outline-none focus:bg-blue-50 focus:rounded disabled:opacity-60" />
                       </td>
                     )))}
+                    <td className="border-b border-gray-100 p-0.5 border-l-2 border-l-gray-300" style={{width:54,background:'#ede9f5'}}>
+                      <div className="w-full text-center text-sm py-1.5 font-semibold text-purple-800">
+                        {getRowSum(z.name, 'v') || '–'}
+                      </div>
+                    </td>
+                    <td className="border-b border-gray-100 p-0.5" style={{width:54,background:'#f3f0f9'}}>
+                      <div className="w-full text-center text-sm py-1.5 font-semibold text-purple-700">
+                        {getRowSum(z.name, 's') || '–'}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
