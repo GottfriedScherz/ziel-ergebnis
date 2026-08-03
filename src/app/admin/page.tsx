@@ -202,6 +202,7 @@ export default function Admin() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Betreuer</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Admin</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Keine Wochenplanung erforderlich">Ausnahme</th>
                 <th className="px-4 py-3" />
               </tr></thead>
               <tbody>
@@ -250,6 +251,9 @@ export default function Admin() {
                       </td>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={u.is_admin} onChange={e => updateUser(u.id, 'is_admin', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={!!u.planung_nicht_erforderlich} onChange={e => updateUser(u.id, 'planung_nicht_erforderlich', e.target.checked)} className="w-4 h-4 accent-orange-500" title="Keine Wochenplanung erforderlich" />
                       </td>
                       <td className="px-4 py-3">
                         {u.id !== profile.id && (
