@@ -105,6 +105,15 @@ export default function Dashboard() {
     }
   }
 
+  function getMissingUsersForWeek(weekItems: any[]): any[] {
+    const vorhandeneUserIds = new Set(weekItems.map((b: any) => b.user_id))
+    return allUsers.filter((u: any) =>
+      !u.planung_nicht_erforderlich &&
+      profile && u.id !== profile.id &&
+      !vorhandeneUserIds.has(u.id)
+    )
+  }
+
   async function handleDelete(id: string, label: string, type: 'own' | 'vm' | 'team') {
     if (!confirm(`Bericht "${label}" wirklich löschen?`)) return
     setDeletingId(id)
@@ -222,7 +231,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {allTeamEntries.length > 0 && (
+        {(allTeamEntries.length > 0 || allUsers.some(u => !u.planung_nicht_erforderlich && u.id !== profile.id)) && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-700 mb-3">Team-Berichte</h3>
             <div>
@@ -230,6 +239,11 @@ export default function Dashboard() {
                 <div key={gruppe.key}>
                   {gi > 0 && <div className="border-t border-gray-100 my-3" />}
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 mb-1.5">{gruppe.label}</div>
+                  {getMissingUsersForWeek(gruppe.items).map(u => (
+                    <div key={'missing-' + u.id} className="flex items-center p-3 rounded-lg border border-red-200 bg-red-50 mb-1">
+                      <span className="text-sm font-medium text-red-600">⚠ {u.name} — Wochenplanung fehlt</span>
+                    </div>
+                  ))}
                   {gruppe.items.map(b => {
                     if ((b as any)._type === 'vm') {
                       const ownerName = allUsers.find((u: any) => u.id === b.user_id)?.name || ''
