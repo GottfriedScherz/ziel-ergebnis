@@ -124,6 +124,21 @@ export default function Admin() {
     showMsg('Zeile gelöscht ✓', 'ok')
   }
 
+  async function moveZeile(index: number, direction: 'up' | 'down') {
+    const newZeilen = [...zeilen]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= newZeilen.length) return
+    const a = newZeilen[index]
+    const b = newZeilen[targetIndex]
+    // Reihenfolge-Werte tauschen
+    await adminApi('/api/admin-zeile', { action: 'update', id: a.id, reihenfolge: b.reihenfolge })
+    await adminApi('/api/admin-zeile', { action: 'update', id: b.id, reihenfolge: a.reihenfolge })
+    // Lokal tauschen
+    newZeilen[index] = { ...a, reihenfolge: b.reihenfolge }
+    newZeilen[targetIndex] = { ...b, reihenfolge: a.reihenfolge }
+    setZeilen([...newZeilen].sort((x, y) => x.reihenfolge - y.reihenfolge))
+  }
+
   async function saveZeilen() {
     setSavingZeilen(true)
     for (const z of zeilen) {
@@ -313,7 +328,13 @@ export default function Admin() {
                         <input type="checkbox" checked={z.aktiv} onChange={e => updateZeileProp(z.id, 'aktiv', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => deleteZeile(z.id, z.name)} className="text-xs text-red-500 hover:text-red-700 font-medium">Löschen</button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => moveZeile(zeilen.indexOf(z), 'up')} disabled={zeilen.indexOf(z) === 0}
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-base leading-none px-1">▲</button>
+                          <button onClick={() => moveZeile(zeilen.indexOf(z), 'down')} disabled={zeilen.indexOf(z) === zeilen.length - 1}
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-base leading-none px-1">▼</button>
+                          <button onClick={() => deleteZeile(z.id, z.name)} className="text-xs text-red-500 hover:text-red-700 font-medium ml-1">Löschen</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
