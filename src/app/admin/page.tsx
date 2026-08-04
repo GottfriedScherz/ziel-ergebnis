@@ -218,6 +218,8 @@ export default function Admin() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Admin</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Keine Wochenplanung erforderlich">Ausnahme</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Tägliches Aufgaben-Mail">☀️ Mail</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Wöchentliches Planungs-Reminder-Mail">📋 Mail</th>
                 <th className="px-4 py-3" />
               </tr></thead>
               <tbody>
@@ -269,6 +271,12 @@ export default function Admin() {
                       </td>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={!!u.planung_nicht_erforderlich} onChange={e => updateUser(u.id, 'planung_nicht_erforderlich', e.target.checked)} className="w-4 h-4 accent-orange-500" title="Keine Wochenplanung erforderlich" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={!!u.mail_tagesaufgaben} onChange={e => updateUser(u.id, 'mail_tagesaufgaben', e.target.checked)} className="w-4 h-4 accent-yellow-500" title="Tägliches Aufgaben-Mail" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={!!u.mail_wochenplanung} onChange={e => updateUser(u.id, 'mail_wochenplanung', e.target.checked)} className="w-4 h-4 accent-blue-500" title="Wöchentliches Planungs-Reminder-Mail" />
                       </td>
                       <td className="px-4 py-3">
                         {u.id !== profile.id && (
