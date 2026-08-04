@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { dbQuery, getToken, getUser } from '@/lib/supabase'
 import Link from 'next/link'
 
-interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null; avatar_url?: string | null }
+interface Profile { id: string; name: string; email: string; karrierestufe: number; is_admin: boolean; betreuer_id: string | null; avatar_url?: string | null; planung_nicht_erforderlich?: boolean; mail_tagesaufgaben?: boolean; mail_wochenplanung?: boolean }
 interface FormZeile { id: string; name: string; reihenfolge: number; stufe_min: number; aktiv: boolean; vm_feld: string | null }
 interface AuthStatus { id: string; confirmed: boolean; last_sign_in: string | null }
 
