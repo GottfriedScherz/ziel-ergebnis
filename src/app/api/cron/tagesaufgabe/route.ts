@@ -11,7 +11,8 @@ async function sendEmails() {
     'Authorization': `Bearer ${SERVICE_KEY}`,
   }
 
-  const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id,name,email`, { headers })
+  // Nur User mit mail_tagesaufgaben = true
+  const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?mail_tagesaufgaben=eq.true&select=id,name,email`, { headers })
   const users = await usersRes.json()
 
   const wochentage = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag']
@@ -31,28 +32,28 @@ async function sendEmails() {
         to: user.email,
         subject: `☀️ ${user.name}, was bringt Dich heute Deinem Ziel näher?`,
         html: `
-          <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1a1a1a;">
-            
-            <h2 style="font-size: 20px; margin: 0 0 8px;">Guten Morgen, ${user.name}! ☀️</h2>
-            <p style="font-size: 13px; color: #888; margin: 0 0 24px;">Heute ist ${heute}.</p>
+<div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1a1a1a;">
 
-            <p style="font-size: 16px; font-weight: 600; margin: 0 0 4px;">🎯 Deine heutigen TOP 3 Aufgaben</p>
-            <p style="font-size: 14px; color: #555; margin: 0 0 20px;">Aufschreiben · Ausführen · Abhaken.<br>3 Aufgaben erledigt = erfolgreicher Tag.</p>
+<h2 style="font-size: 20px; margin: 0 0 8px;">Guten Morgen, ${user.name}! ☀️</h2>
+<p style="font-size: 13px; color: #888; margin: 0 0 24px;">Heute ist ${heute}.</p>
 
-            <div style="background: #f9f8f5; border-radius: 10px; padding: 20px 24px; margin-bottom: 28px;">
-              <ol style="font-size: 15px; line-height: 2.4; margin: 0; padding-left: 20px; color: #333;">
-                <li>___________________________________</li>
-                <li>___________________________________</li>
-                <li>___________________________________</li>
-              </ol>
-            </div>
+<p style="font-size: 16px; font-weight: 600; margin: 0 0 4px;">🎯 Deine heutigen TOP 3 Aufgaben</p>
+<p style="font-size: 14px; color: #555; margin: 0 0 20px;">Aufschreiben · Ausführen · Abhaken.<br>3 Aufgaben erledigt = erfolgreicher Tag.</p>
 
-            <p style="font-size: 13px; color: #aaa; margin: 0;">
-              Ziel & Ergebnis – Mein Ziel = mein Ergebnis. Auf mich ist Verlass.
-            </p>
+<div style="background: #f9f8f5; border-radius: 10px; padding: 20px 24px; margin-bottom: 28px;">
+<ol style="font-size: 15px; line-height: 2.4; margin: 0; padding-left: 20px; color: #333;">
+<li>___________________________________</li>
+<li>___________________________________</li>
+<li>___________________________________</li>
+</ol>
+</div>
 
-          </div>
-        `
+<p style="font-size: 13px; color: #aaa; margin: 0;">
+Ziel & Ergebnis – Mein Ziel = mein Ergebnis. Auf mich ist Verlass.
+</p>
+
+</div>
+`
       })
     })
     sent++
