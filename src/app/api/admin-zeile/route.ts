@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
     if (rest.stufe_min !== undefined) updateBody.stufe_min = rest.stufe_min
     if (rest.aktiv !== undefined) updateBody.aktiv = rest.aktiv
     if (rest.vm_feld !== undefined) updateBody.vm_feld = rest.vm_feld
+if (rest.reihenfolge !== undefined) updateBody.reihenfolge = rest.reihenfolge
     const res = await fetch(`${SUPABASE_URL}/rest/v1/formular_zeilen?id=eq.${id}`, {
       method: 'PATCH', headers,
       body: JSON.stringify(updateBody)
