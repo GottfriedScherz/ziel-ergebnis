@@ -209,7 +209,7 @@ export default function Admin() {
         )}
 
         {tab === 'users' && (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
             <table className="w-full">
               <thead><tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
@@ -217,9 +217,9 @@ export default function Admin() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Betreuer</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Admin</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Keine Wochenplanung erforderlich">Ausnahme</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Tägliches Aufgaben-Mail">☀️ Mail</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase" title="Wöchentliches Planungs-Reminder-Mail">📋 Mail</th>
+                <th className="text-center px-2 py-3 text-xs font-semibold text-gray-500 uppercase" title="Keine Wochenplanung erforderlich">Ausn.</th>
+                <th className="text-center px-2 py-3 text-xs font-semibold text-gray-500 uppercase" title="Tägliches Aufgaben-Mail">☀️</th>
+                <th className="text-center px-2 py-3 text-xs font-semibold text-gray-500 uppercase" title="Wöchentliches Planungs-Reminder-Mail">📋</th>
                 <th className="px-4 py-3" />
               </tr></thead>
               <tbody>
