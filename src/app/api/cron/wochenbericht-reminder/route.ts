@@ -40,7 +40,11 @@ async function sendReminders() {
 
   const { monat, woche, jahr } = getAktuelleWoche()
 
-  const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id,name,email`, { headers })
+  // Nur User mit mail_wochenplanung = true UND planung_nicht_erforderlich = false
+  const usersRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?mail_wochenplanung=eq.true&planung_nicht_erforderlich=eq.false&select=id,name,email`,
+    { headers }
+  )
   const users = await usersRes.json()
 
   const berichteRes = await fetch(
@@ -65,22 +69,22 @@ async function sendReminders() {
         to: user.email,
         subject: '📋 Wochenbericht noch offen',
         html: `
-          <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
-            <h2 style="color: #1a1a1a;">Hallo ${user.name.split(' ')[0]}!</h2>
-            <p style="color: #444; font-size: 15px; line-height: 1.6;">
-              Dein Wochenbericht für <strong>${monat} / ${woche}</strong> wurde noch nicht eingegeben.
-            </p>
-            <p style="color: #444; font-size: 15px; line-height: 1.6;">
-              Nimm dir kurz Zeit und trag deine Aktivitäten ein — es dauert nur wenige Minuten.
-            </p>
-            <a href="${APP_URL}/bericht" style="display: inline-block; background: #2a6fa8; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; margin-top: 8px;">
-              Jetzt Wochenbericht eingeben →
-            </a>
-            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">
-              Ziel & Ergebnis – Mein Ziel = mein Ergebnis. Auf mich ist Verlass.
-            </p>
-          </div>
-        `
+<div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
+<h2 style="color: #1a1a1a;">Hallo ${user.name.split(' ')[0]}!</h2>
+<p style="color: #444; font-size: 15px; line-height: 1.6;">
+Dein Wochenbericht für <strong>${monat} / ${woche}</strong> wurde noch nicht eingegeben.
+</p>
+<p style="color: #444; font-size: 15px; line-height: 1.6;">
+Nimm dir kurz Zeit und trag deine Aktivitäten ein — es dauert nur wenige Minuten.
+</p>
+<a href="${APP_URL}/bericht" style="display: inline-block; background: #2a6fa8; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; margin-top: 8px;">
+Jetzt Wochenbericht eingeben →
+</a>
+<p style="color: #aaa; font-size: 12px; margin-top: 24px;">
+Ziel & Ergebnis – Mein Ziel = mein Ergebnis. Auf mich ist Verlass.
+</p>
+</div>
+`
       })
     })
     sent++
