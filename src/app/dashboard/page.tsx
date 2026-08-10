@@ -107,12 +107,11 @@ export default function Dashboard() {
 
   function getMissingUsersForWeek(weekItems: any[]): any[] {
     const vorhandeneUserIds = new Set(weekItems.map((b: any) => b.user_id))
-    // Nur direkte Downline des eingeloggten Users (nicht alle User)
-    const visibleUserIds = new Set([
-      ...teamBerichte.map((b: any) => b.user_id),
-      ...vmBerichte.map((b: any) => b.user_id),
-      ...(profile?.is_admin ? allUsers.map((u: any) => u.id) : allUsers.filter((u: any) => u.betreuer_id === profile?.id).map((u: any) => u.id))
-    ])
+    // Gesamte rekursive Downline des eingeloggten Users
+    const subtreeIds = profile?.is_admin
+      ? allUsers.map((u: any) => u.id)
+      : getSubtreeIds(profile?.id, allUsers)
+    const visibleUserIds = new Set(subtreeIds)
     return allUsers.filter((u: any) =>
       !u.planung_nicht_erforderlich &&
       profile && u.id !== profile.id &&
