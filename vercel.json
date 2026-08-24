@@ -1,0 +1,13 @@
+{
+  "crons": [
+    { "path": "/api/cron/tagesaufgabe", "schedule": "0 5 * * 1-5" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 6 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 7 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 8 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 9 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 10 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 11 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 12 * * 1" },
+    { "path": "/api/cron/wochenbericht-reminder", "schedule": "30 13 * * 1" }
+  ]
+}
